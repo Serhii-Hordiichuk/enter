@@ -68,3 +68,4 @@ export { PaletteIcon } from "./PaletteIcon";
 export { ExportIcon } from "./ExportIcon";
 export { MailIcon } from "./MailIcon";
 export { LinkIcon } from "./LinkIcon";
+export { FolderIcon } from "./FolderIcon";

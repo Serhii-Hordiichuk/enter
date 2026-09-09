@@ -4,7 +4,8 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Avatar } from '@/components/profile/Avatar';
-import { BellOffIcon, ImageIcon, PinIcon } from '@/components/icons';
+import { BellOffIcon, BotIcon, GroupIcon, ImageIcon, PinIcon } from '@/components/icons';
+import { SAVED_MESSAGES_ROOM } from '@/lib/p2p/trysteroSetup';
 import { useVortexStore, type ActiveRoom } from '@/lib/store/useVortexStore';
 
 const EMPTY: [] = [];
@@ -33,7 +34,7 @@ export function ChatListItem({ room, onOpenSharedMedia }: ChatListItemProps): Re
   const peers = useVortexStore((state) => state.peers[room.id] ?? EMPTY);
   const active = pathname === '/chat/' + encodeURIComponent(room.id);
   const last = messages.length > 0 ? messages[messages.length - 1] : null;
-  const title = room.title || (room.peerDid ? shortDid(room.peerDid) : shortDid(room.id));
+  const title = room.id === SAVED_MESSAGES_ROOM ? 'Saved Messages' : room.title || (room.peerDid ? shortDid(room.peerDid) : shortDid(room.id));
   const preview = last ? (last.mine ? 'You: ' : '') + last.body.replace(/\s+/g, ' ').slice(0, 90) : 'No messages yet';
 
   return (
@@ -66,6 +67,8 @@ export function ChatListItem({ room, onOpenSharedMedia }: ChatListItemProps): Re
         <div className="mt-0.5 flex items-center gap-1.5">
           {room.pinned ? <PinIcon size={13} className={active ? 'shrink-0 text-white/70' : 'shrink-0 text-gotoap-ink-faint'} /> : null}
           {room.muted ? <BellOffIcon size={13} className={active ? 'shrink-0 text-white/70' : 'shrink-0 text-gotoap-ink-faint'} /> : null}
+          {room.isGroup ? <GroupIcon size={13} className="shrink-0 text-gotoap-accent" aria-label="Group" /> : null}
+          {room.isBot ? <BotIcon size={13} className="shrink-0 text-gotoap-accent" aria-label="Bot" /> : null}
           <p className={'truncate text-[13px] ' + (active ? 'text-white/80' : 'text-gotoap-ink-muted')}>{preview}</p>
         </div>
       </div>
