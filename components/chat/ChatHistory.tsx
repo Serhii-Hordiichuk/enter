@@ -3,6 +3,7 @@
 /** Scrollable message list with date separators, reactions, and jump-to-highlight support. */
 import { useEffect, useMemo, useRef } from 'react';
 import { MessageBubble, type MessageActionKind } from '@/components/chat/MessageBubble';
+import { ChatMessageSkeleton } from '@/components/chat/ChatHistorySkeleton';
 import type { VortexMessage } from '@/lib/store/useVortexStore';
 import { useVortexStore } from '@/lib/store/useVortexStore';
 
@@ -10,8 +11,10 @@ interface ChatHistoryProps {
   roomId: string;
   myDid: string;
   query?: string;
+  highlightId?: string | null;
   onAction: (action: MessageActionKind, message: VortexMessage) => void;
   onReaction: (messageId: string, emoji: string) => void;
+  onLoadComplete?: () => void;
 }
 
 function dayLabel(timestamp: number): string {
@@ -23,14 +26,31 @@ function dayLabel(timestamp: number): string {
   return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
 }
 
-export function ChatHistory({ roomId, myDid, query, onAction, onReaction }: ChatHistoryProps): React.JSX.Element {
+export function ChatHistory({ roomId, myDid, query, highlightId, onAction, onReaction, onLoadComplete }: ChatHistoryProps): React.JSX.Element {
   const messages = useVortexStore((state) => state.messages[roomId] ?? []);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const bottomAnchor = useRef<HTMLDivElement | null>(null);
+  const messageRefs = useRef(new Map<string, HTMLDivElement>());
+
+    useEffect(() => {
+    bottomAnchor.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    onLoadComplete?.();
+  }, [messages.length, onLoadComplete]);
 
   useEffect(() => {
-    bottomAnchor.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-  }, [messages.length]);
+    // Scroll to the bottom on mount
+    bottomAnchor.current?.scrollIntoView({ behavior: 'auto', block: 'end' });
+  }, []);
+
+  useEffect(() => {
+    if (!highlightId) return;
+    const target = messageRefs.current.get(highlightId);
+    if (!target) return;
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    target.classList.add('gotoap-message-flash');
+    const timer = window.setTimeout(() => target.classList.remove('gotoap-message-flash'), 1600);
+    return () => window.clearTimeout(timer);
+  }, [highlightId, messages.length]);
 
   const grouped = useMemo(() => {
     const byId = new Map(messages.map((message) => [message.id, message] as const));
@@ -46,10 +66,11 @@ export function ChatHistory({ roomId, myDid, query, onAction, onReaction }: Chat
     return sections;
   }, [messages]);
 
-  return (
+    return (
     <div ref={scrollRef} className="gotoap-scroll relative flex-1 overflow-y-auto px-2 py-3 sm:px-6" aria-label="Message history">
       {messages.length === 0 ? (
-        <div className="flex h-full flex-col items-center justify-center gap-2 text-center">
+        <div className="flex h-full flex-col items-center justify-center gap-4 text-center">
+          <ChatMessageSkeleton />
           <p className="text-sm text-gotoap-ink-muted">No messages here yet.</p>
           <p className="text-xs text-gotoap-ink-faint">Send a message to start the conversation. Both peers must be in this room.</p>
         </div>
@@ -61,7 +82,12 @@ export function ChatHistory({ roomId, myDid, query, onAction, onReaction }: Chat
                 {section.day}
               </div>
               {section.items.map(({ message, replyTo }) => (
-                <MessageBubble key={message.id} message={message} replyTo={replyTo} myDid={myDid} query={query} onAction={onAction} onReaction={onReaction} />
+                <div
+                  key={message.id}
+                  ref={(node) => { if (node) messageRefs.current.set(message.id, node); else messageRefs.current.delete(message.id); }}
+                >
+                  <MessageBubble key={message.id} message={message} replyTo={replyTo} myDid={myDid} query={query} highlighted={message.id === highlightId} onAction={onAction} onReaction={onReaction} />
+                </div>
               ))}
             </div>
           ))}

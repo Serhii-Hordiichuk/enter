@@ -7,6 +7,7 @@ import { Sidebar } from '@/components/layout/Sidebar';
 import { DidWalletCreator } from '@/components/did/DidWalletCreator';
 import { LogoIcon } from '@/components/icons';
 import { useVortexStore } from '@/lib/store/useVortexStore';
+import { SharedMediaDialog } from '@/components/chat/SharedMediaDialog';
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -17,6 +18,7 @@ export function AppShell({ children }: AppShellProps): React.JSX.Element {
   const currentDid = useVortexStore((state) => state.currentDid);
   const ensureDid = useVortexStore((state) => state.ensureDid);
   const [checked, setChecked] = useState(false);
+  const [sharedMediaRoomId, setSharedMediaRoomId] = useState<string | null>(null);
 
   useEffect(() => {
     try { ensureDid(); } catch { /* No DID yet: the onboarding screen will be shown. */ }
@@ -52,8 +54,11 @@ export function AppShell({ children }: AppShellProps): React.JSX.Element {
 
   return (
     <div className="flex h-dvh w-full overflow-hidden bg-gotoap-bg">
+      {sharedMediaRoomId ? (
+        <SharedMediaDialog open={true} roomId={sharedMediaRoomId} onClose={() => setSharedMediaRoomId(null)} />
+      ) : null}
       <aside className={(isDetail ? 'hidden' : 'flex') + ' w-full shrink-0 flex-col border-r border-gotoap-line bg-gotoap-panel lg:flex lg:w-[380px]'}>
-        <Sidebar />
+        <Sidebar onOpenSharedMedia={(id) => setSharedMediaRoomId(id)} />
       </aside>
       <main className="flex min-w-0 flex-1 flex-col">{children}</main>
     </div>

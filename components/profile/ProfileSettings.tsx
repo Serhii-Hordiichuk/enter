@@ -8,9 +8,10 @@ import { Input } from '@/components/ui/Input';
 import { Switch } from '@/components/ui/Switch';
 import { useVortexStore } from '@/lib/store/useVortexStore';
 import {
-  BellOffIcon, CameraIcon, ChevronRightIcon, ClockIcon, ExportIcon, GroupIcon, KeyIcon, LockIcon, MailIcon, MapPinIcon, PaletteIcon, PhoneIcon, ShieldIcon, TrashIcon, UserIcon,
+  CameraIcon, ChevronRightIcon, ClockIcon, ExportIcon, KeyIcon, LockIcon, PaletteIcon, PhoneIcon, ShieldIcon, TrashIcon, UserIcon,
 } from '@/components/icons';
 import type { PrivacySettings } from '@/lib/store/useVortexStore';
+import { exportAllData } from '@/lib/messaging/messenger';
 
 type Section = 'main' | 'personal' | 'privacy' | 'sessions' | '2fa' | 'data' | 'danger';
 
@@ -117,7 +118,7 @@ export function ProfileSettings({ onBack }: { onBack: () => void }): React.JSX.E
             </div>
           ) : section === 'data' ? (
             <div className="flex flex-col gap-2">
-              <Button variant="secondary" className="w-full" onClick={() => { try { const { exportAllData } = require('@/lib/messaging/messenger'); exportAllData(); } catch { /* ignore */ } }}><span className="inline-flex items-center gap-2"><ExportIcon size={16} /> Export All Data (JSON)</span></Button>
+              <Button variant="secondary" className="w-full" onClick={() => { try { exportAllData(); } catch (error) { console.error('Export failed:', error); } }}><span className="inline-flex items-center gap-2"><ExportIcon size={16} /> Export All Data (JSON)</span></Button>
               <div className="mt-2 rounded-xl border border-gotoap-line bg-gotoap-panel p-4">
                 <h3 className="text-sm font-medium text-gotoap-ink">Storage Usage</h3>
                 <p className="mt-1 text-xs text-gotoap-ink-muted">Messages: {Object.values(useVortexStore.getState().messages).reduce((acc, m) => acc + m.length, 0)}</p>

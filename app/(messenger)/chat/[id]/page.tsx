@@ -5,12 +5,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ChatHeader } from '@/components/chat/ChatHeader';
 import { ChatHistory } from '@/components/chat/ChatHistory';
+import { ChatHistorySkeleton } from '@/components/chat/ChatHistorySkeleton';
 import { MessageInput } from '@/components/chat/MessageInput';
 import { ChatSearchOverlay } from '@/components/chat/ChatSearchOverlay';
+import { SharedMediaDialog } from '@/components/chat/SharedMediaDialog';
 import { AiAssistant } from '@/components/ai/AiAssistant';
 import { ChatProfilePanel } from "@/components/chat/ChatProfilePanel";
 import { ForwardDialog } from '@/components/chats/ForwardDialog';
-import { PinIcon } from '@/components/icons';
+import { CloseIcon, PinIcon } from '@/components/icons';
 import type { MessageActionKind } from '@/components/chat/MessageBubble';
 import type { VortexMessage } from '@/lib/store/useVortexStore';
 import { useVortexStore } from '@/lib/store/useVortexStore';
@@ -38,20 +40,24 @@ export default function ChatPage(): React.JSX.Element {
   const toggleReaction = useVortexStore((state) => state.toggleReaction);
   const messages = useVortexStore((state) => state.messages[roomId] ?? []);
 
-  const [typingPeers, setTypingPeers] = useState<string[]>([]);
+    const [typingPeers, setTypingPeers] = useState<string[]>([]);
   const [searchOpen, setSearchOpen] = useState(false);
   const [aiPanelOpen, setAiPanelOpen] = useState(false);
   const [forwarding, setForwarding] = useState<string | null>(null);
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
-  const [pinnedId, setPinnedId] = useState<string | null>(null);
   const [profilePanelOpen, setProfilePanelOpen] = useState(false);
+  const [sharedMediaRoomId, setSharedMediaRoomId] = useState<string | null>(null);
+  const [pinnedJumpId, setPinnedMessageJump] = useState<string | null>(null);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
   const typingTimers = useRef(new Map<string, number>());
 
   const room = rooms.find((item) => item.id === roomId) ?? null;
   const peerName = room?.title || (room?.peerDid ? room.peerDid.slice(0, 16) + '...' : roomId);
   const myDid = currentDid?.did ?? getStoredDIDKeyPair()?.did ?? 'anonymous';
   const peerCount = useVortexStore((state) => (state.peers[roomId] ?? []).length);
+  const pinnedMessageId = useVortexStore((state) => state.pinnedMessages[roomId] ?? null);
+  const togglePinnedMessage = useVortexStore((state) => state.togglePinnedMessage);
 
   useEffect(() => {
     try {
@@ -71,7 +77,7 @@ export default function ChatPage(): React.JSX.Element {
         await webrtcManager.join(roomId);
         if (disposed) return;
         const me = getStoredDIDKeyPair();
-        if (me) await broadcastProfile(roomId, { did: me.did, displayName: profile.displayName || undefined, bio: profile.bio || undefined, colorId: profile.colorId });
+        if (me) await broadcastProfile(roomId, { did: me.did, displayName: profile.displayName || undefined, bio: profile.bio || undefined, colorId: profile.avatarColor });
       } catch (error) {
         console.error('Failed to join the P2P room', error);
       }
@@ -160,37 +166,57 @@ export default function ChatPage(): React.JSX.Element {
     const messageId = message.id;
     if (action === 'reply') setReplyTo(messageId);
     if (action === 'edit') setEditing(messageId);
-    if (action === 'pin') setPinnedId((current) => (current === messageId ? null : messageId));
+    if (action === 'pin') togglePinnedMessage(roomId, messageId);
     if (action === 'delete') void deleteSentMessage(roomId, messageId).catch((error) => console.error('Delete failed:', error));
     if (action === 'forward') setForwarding(messageId);
     if (action === 'copy') void navigator.clipboard.writeText(message.body).catch((error) => console.error('Copy failed:', error));
-  }, [roomId]);
+  }, [roomId, togglePinnedMessage]);
 
-  const pinnedMessage = pinnedId ? messages.find((message) => message.id === pinnedId) ?? null : null;
+  const pinnedMessage = pinnedMessageId ? messages.find((message) => message.id === pinnedMessageId) ?? null : null;
   return (
     <div className="gotoap-chat-bg relative flex h-full min-h-0">
       <section className="flex h-full min-w-0 flex-1 flex-col">
-        <ChatHeader
+                <ChatHeader
           roomId={roomId}
           peerCount={peerCount}
           peerName={peerName}
           typingPeers={typingPeers}
           aiBusy={false}
           aiPanelOpen={aiPanelOpen}
-          onOpenSearch={() => setSearchOpen(true)}
           onToggleAiPanel={() => setAiPanelOpen((value) => !value)}
+          onOpenSharedMedia={() => setSharedMediaRoomId(roomId)}
+          onOpenSearch={() => setSearchOpen(true)}
           onBack={() => router.push('/')}
           onLeave={() => { deleteRoom(roomId); void webrtcManager.leave(roomId); router.push('/'); }}
           onOpenProfile={() => setProfilePanelOpen(true)}
         />
         {pinnedMessage ? (
-          <div className="flex items-center gap-2 border-b border-gotoap-line bg-gotoap-panel/90 px-4 py-1.5 text-[13px]">
+          <button
+            type="button"
+            onClick={() => setPinnedMessageJump(pinnedMessage.id)}
+            className="flex w-full items-center gap-2 border-b border-gotoap-line bg-gotoap-panel px-3 py-1.5 text-left sm:px-4"
+            aria-label="View pinned message"
+          >
             <PinIcon size={14} className="shrink-0 text-gotoap-accent" />
-            <span className="truncate text-gotoap-ink-muted">{pinnedMessage.body.slice(0, 120)}</span>
-            <button type="button" onClick={() => setPinnedId(null)} className="ml-auto text-xs text-gotoap-accent hover:underline">Unpin</button>
-          </div>
+            <div className="min-w-0 flex-1 truncate text-xs text-gotoap-ink-muted">
+              <span className="font-medium text-gotoap-accent">Pinned message: </span>
+              {pinnedMessage.kind === 'text' ? pinnedMessage.body : pinnedMessage.kind === 'file' ? pinnedMessage.media?.name ?? 'File' : pinnedMessage.kind}
+            </div>
+            <CloseIcon size={14} className="shrink-0" />
+          </button>
         ) : null}
-        <ChatHistory roomId={roomId} myDid={myDid} onAction={handleMessageAction} onReaction={handleReaction} />
+        {!historyLoaded ? (
+          <ChatHistorySkeleton />
+        ) : (
+          <ChatHistory
+            roomId={roomId}
+            myDid={myDid}
+            highlightId={pinnedJumpId}
+            onAction={handleMessageAction}
+            onReaction={handleReaction}
+            onLoadComplete={() => setHistoryLoaded(true)}
+          />
+        )}
         <MessageInput
           onSendText={handleSendText}
           onSendSticker={handleSendSticker}
@@ -206,7 +232,8 @@ export default function ChatPage(): React.JSX.Element {
       </section>
       {profilePanelOpen ? <ChatProfilePanel roomId={roomId} onClose={() => setProfilePanelOpen(false)} /> : null}
       {aiPanelOpen ? <AiAssistant roomId={roomId} open onClose={() => setAiPanelOpen(false)} /> : null}
-      {searchOpen ? <ChatSearchOverlay roomId={roomId} onJumpTo={() => undefined} onClose={() => setSearchOpen(false)} /> : null}
+      {searchOpen ? <ChatSearchOverlay roomId={roomId} onJumpTo={(messageId) => setPinnedMessageJump(messageId)} onClose={() => setSearchOpen(false)} /> : null}
+      <SharedMediaDialog open={sharedMediaRoomId === roomId} roomId={roomId} onClose={() => setSharedMediaRoomId(null)} />
       <ForwardDialog
         open={forwarding !== null}
         excludeRoomId={forwarding ? roomId : null}

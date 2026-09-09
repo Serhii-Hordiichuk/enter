@@ -9,9 +9,17 @@ import { AiToggle } from '@/components/ai/AiToggle';
 import { Avatar } from '@/components/profile/Avatar';
 import { DidBadge } from '@/components/did/DidBadge';
 import { ProfileEditor } from '@/components/profile/ProfileEditor';
-import { BackIcon, BellOffIcon, ClockIcon, CpuIcon, DownloadIcon, KeyIcon, ShieldIcon } from '@/components/icons';
+import { BackIcon, BellOffIcon, ClockIcon, CpuIcon, DownloadIcon, KeyIcon, MonitorIcon, MoonIcon, ShieldIcon } from '@/components/icons';
 import { useVortexStore } from '@/lib/store/useVortexStore';
 import { exportAllData } from '@/lib/messaging/messenger';
+
+const LANGUAGES: { code: string; label: string }[] = [
+  { code: 'en', label: 'English' },
+  { code: 'uk', label: 'Ukrainian' },
+  { code: 'ru', label: 'Russian' },
+  { code: 'de', label: 'Deutsch' },
+  { code: 'es', label: 'Espanol' },
+];
 
 export default function SettingsPage(): React.JSX.Element {
   const router = useRouter();
@@ -21,6 +29,9 @@ export default function SettingsPage(): React.JSX.Element {
   const apiKey = useVortexStore((state) => state.apiKey);
   const setApiKey = useVortexStore((state) => state.setApiKey);
   const switchAiMode = useVortexStore((state) => state.switchAiMode);
+  const theme = useVortexStore((state) => state.theme);
+  const setTheme = useVortexStore((state) => state.setTheme);
+  const updateProfile = useVortexStore((state) => state.updateProfile);
   const [keyDraft, setKeyDraft] = useState('');
   const [keySaved, setKeySaved] = useState(false);
   const [exported, setExported] = useState(false);
@@ -60,7 +71,7 @@ export default function SettingsPage(): React.JSX.Element {
             {did ? (
               <div className="flex flex-col gap-4">
                 <div className="flex items-center gap-4">
-                  <Avatar seed={did} name={profile.displayName} colorId={profile.colorId} size={72} />
+                  <Avatar seed={did} name={profile.displayName} colorId={profile.avatarColor} size={72} />
                   <div className="min-w-0">
                     <p className="truncate text-lg font-semibold text-gotoap-ink">{profile.displayName || 'Anonymous peer'}</p>
                     <p className="truncate text-sm text-gotoap-ink-muted">{profile.bio || 'No bio yet'}</p>
@@ -107,6 +118,43 @@ export default function SettingsPage(): React.JSX.Element {
             <Button onClick={exportData} variant="secondary" className="w-full">
               <span className="inline-flex items-center gap-2"><DownloadIcon size={16} /> {exported ? 'Exported' : 'Export all data (JSON)'}</span>
             </Button>
+          </section>
+
+          <section className="rounded-2xl border border-gotoap-line bg-gotoap-panel p-5">
+            <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-gotoap-ink-muted">
+              <MoonIcon size={15} /> Appearance
+            </h2>
+            <div className="flex items-center gap-2">
+              {([
+                ['dark', 'Dark', <MoonIcon key="dark-icon" size={16} />],
+                ['system', 'System', <MonitorIcon key="system-icon" size={16} />],
+                ['light', 'Light', null],
+              ] as [string, string, React.ReactNode][]).map(([value, label, icon]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setTheme(value as 'dark' | 'system' | 'light')}
+                  className={'flex flex-1 items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium ' + (theme === value ? 'bg-gotoap-accent text-white' : 'bg-gotoap-hover text-gotoap-ink-muted hover:text-gotoap-ink')}
+                >
+                  {icon}
+                  {label}
+                </button>
+              ))}
+            </div>
+            <p className="mt-2 text-xs text-gotoap-ink-muted">Dark is the default. Light follows the browser preference in future releases.</p>
+          </section>
+
+          <section className="rounded-2xl border border-gotoap-line bg-gotoap-panel p-5">
+            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-gotoap-ink-muted">Language</h2>
+            <select
+              value={profile.language}
+              onChange={(event) => updateProfile({ language: event.target.value })}
+              className="h-10 w-full rounded-xl border border-gotoap-line bg-gotoap-bg px-3 text-sm text-gotoap-ink focus:outline-none"
+            >
+              {LANGUAGES.map((language) => (
+                <option key={language.code} value={language.code}>{language.label}</option>
+              ))}
+            </select>
           </section>
 
           <section className="rounded-2xl border border-gotoap-line bg-gotoap-panel p-5">

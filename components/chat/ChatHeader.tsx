@@ -6,7 +6,7 @@ import { Avatar } from '@/components/profile/Avatar';
 import { Menu } from '@/components/ui/Menu';
 import { RenameDialog } from '@/components/chats/RenameDialog';
 import {
-  ArchiveIcon, BackIcon, BellIcon, BellOffIcon, MoreIcon, PencilIcon, PinIcon, SearchIcon, SparkIcon, TrashIcon,
+    ArchiveIcon, BackIcon, BellIcon, BellOffIcon, ImageIcon, MoreIcon, PencilIcon, PinIcon, SearchIcon, SparkIcon, TrashIcon,
 } from '@/components/icons';
 import { useVortexStore } from '@/lib/store/useVortexStore';
 
@@ -15,17 +15,18 @@ interface ChatHeaderProps {
   peerCount: number;
   peerName: string;
   typingPeers: string[];
-  aiBusy: boolean;
+    aiBusy: boolean;
   aiPanelOpen: boolean;
-  onOpenSearch: () => void;
   onToggleAiPanel: () => void;
+  onOpenSharedMedia: () => void;
+  onOpenSearch: () => void;
   onBack: () => void;
   onLeave: () => void;
   onOpenProfile: () => void;
 }
 
 export function ChatHeader(props: ChatHeaderProps): React.JSX.Element {
-  const { roomId, peerCount, peerName, typingPeers, aiBusy, aiPanelOpen, onOpenSearch, onToggleAiPanel, onBack, onLeave, onOpenProfile } = props;
+    const { roomId, peerCount, peerName, typingPeers, aiBusy, aiPanelOpen, onToggleAiPanel, onOpenSharedMedia, onOpenSearch, onBack, onLeave, onOpenProfile } = props;
   const room = useVortexStore((state) => state.activeRooms.find((item) => item.id === roomId) ?? null);
   const toggleRoomPinned = useVortexStore((state) => state.toggleRoomPinned);
   const toggleRoomMuted = useVortexStore((state) => state.toggleRoomMuted);
@@ -55,8 +56,11 @@ export function ChatHeader(props: ChatHeaderProps): React.JSX.Element {
           <p className={'truncate text-xs ' + (typingPeers.length > 0 ? 'text-gotoap-accent' : peerCount > 0 ? 'text-gotoap-accent-muted' : 'text-gotoap-ink-faint')}>{status}</p>
         </div>
       </button>
-      <button type="button" onClick={onOpenSearch} aria-label="Search in chat" className="inline-flex h-9 w-9 items-center justify-center rounded-full text-gotoap-ink-muted transition hover:bg-gotoap-hover hover:text-gotoap-ink">
+      <button type="button" onClick={onOpenSearch} aria-label="Search in this chat" className="inline-flex h-9 w-9 items-center justify-center rounded-full text-gotoap-ink-muted transition hover:bg-gotoap-hover hover:text-gotoap-ink">
         <SearchIcon size={19} />
+      </button>
+      <button type="button" onClick={onOpenSharedMedia} aria-label="Shared media" className="inline-flex h-9 w-9 items-center justify-center rounded-full text-gotoap-ink-muted transition hover:bg-gotoap-hover hover:text-gotoap-ink">
+        <ImageIcon size={19} />
       </button>
       <button type="button" onClick={onToggleAiPanel} aria-label="Toggle the AI assistant" aria-pressed={aiPanelOpen} className={'inline-flex h-9 w-9 items-center justify-center rounded-full transition ' + (aiPanelOpen ? 'bg-gotoap-accent text-white hover:bg-gotoap-accent-hover' : 'text-gotoap-ink-muted hover:bg-gotoap-hover hover:text-gotoap-ink')}>
         {aiBusy ? <span className="inline-flex animate-pulse"><SparkIcon size={19} /></span> : <SparkIcon size={19} />}

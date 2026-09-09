@@ -58,3 +58,20 @@ body {
   resize: none;
   max-height: 140px;
 }
+
+/* Flash highlight for a focused message (pinned jump, search jump). */
+.gotoap-message-flash {
+  animation: gotoap-flash 1.2s ease-out 2;
+}
+
+@keyframes gotoap-flash {
+  0% {
+    background-color: rgba(51, 144, 236, 0.35);
+  }
+  40% {
+    background-color: rgba(51, 144, 236, 0.18);
+  }
+  100% {
+    background-color: transparent;
+  }
+}

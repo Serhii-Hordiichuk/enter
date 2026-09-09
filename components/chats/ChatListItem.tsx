@@ -4,13 +4,14 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Avatar } from '@/components/profile/Avatar';
-import { BellOffIcon, PinIcon } from '@/components/icons';
+import { BellOffIcon, ImageIcon, PinIcon } from '@/components/icons';
 import { useVortexStore, type ActiveRoom } from '@/lib/store/useVortexStore';
 
 const EMPTY: [] = [];
 
 interface ChatListItemProps {
   room: ActiveRoom;
+  onOpenSharedMedia: (roomId: string) => void;
 }
 
 function shortDid(did: string): string {
@@ -26,7 +27,7 @@ function formatChatTime(timestamp: number): string {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-export function ChatListItem({ room }: ChatListItemProps): React.JSX.Element {
+export function ChatListItem({ room, onOpenSharedMedia }: ChatListItemProps): React.JSX.Element {
   const pathname = usePathname();
   const messages = useVortexStore((state) => state.messages[room.id] ?? EMPTY);
   const peers = useVortexStore((state) => state.peers[room.id] ?? EMPTY);
@@ -45,7 +46,22 @@ export function ChatListItem({ room }: ChatListItemProps): React.JSX.Element {
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-2">
           <span className={'truncate text-[15px] font-medium ' + (active ? 'text-white' : 'text-gotoap-ink')}>{title}</span>
-          <span className={'shrink-0 text-xs ' + (active ? 'text-white/70' : 'text-gotoap-ink-muted')}>{formatChatTime(last ? last.timestamp : room.lastMessageAt)}</span>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              aria-label="Shared media"
+              title="Shared media"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onOpenSharedMedia(room.id);
+              }}
+              className="inline-flex h-7 w-7 items-center justify-center rounded-full text-gotoap-ink-muted opacity-0 transition hover:bg-gotoap-hover hover:text-gotoap-ink group-hover:opacity-100"
+            >
+              <ImageIcon size={15} />
+            </button>
+            <span className={'shrink-0 text-xs ' + (active ? 'text-white/70' : 'text-gotoap-ink-muted')}>{formatChatTime(last ? last.timestamp : room.lastMessageAt)}</span>
+          </div>
         </div>
         <div className="mt-0.5 flex items-center gap-1.5">
           {room.pinned ? <PinIcon size={13} className={active ? 'shrink-0 text-white/70' : 'shrink-0 text-gotoap-ink-faint'} /> : null}

@@ -7,9 +7,10 @@ import { useVortexStore } from '@/lib/store/useVortexStore';
 
 interface ChatListProps {
   query: string;
+  onOpenSharedMedia: (roomId: string) => void;
 }
 
-export function ChatList({ query }: ChatListProps): React.JSX.Element {
+export function ChatList({ query, onOpenSharedMedia }: ChatListProps): React.JSX.Element {
   const activeRooms = useVortexStore((state) => state.activeRooms);
   const normalized = query.trim().toLowerCase();
   const filtered = activeRooms.filter((room) => (room.title || room.id).toLowerCase().includes(normalized));
@@ -32,7 +33,7 @@ export function ChatList({ query }: ChatListProps): React.JSX.Element {
     <nav className="gotoap-scroll flex-1 overflow-y-auto px-2 pb-3" aria-label="Chat list">
       <div className="flex flex-col gap-0.5">
         {filtered.map((room) => (
-          <ChatListItem key={room.id} room={room} />
+          <ChatListItem key={room.id} room={room} onOpenSharedMedia={onOpenSharedMedia} />
         ))}
       </div>
     </nav>

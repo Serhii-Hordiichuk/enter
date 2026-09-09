@@ -11,14 +11,20 @@ import { ChatList } from '@/components/chats/ChatList';
 import { ProfileDialog } from '@/components/profile/ProfileDialog';
 import { ArchiveList } from '@/components/archive/ArchiveList';
 import { ContactsList } from '@/components/contacts/ContactsList';
-import { ArchiveIcon, BotIcon, CallsIcon, ChatsIcon, ContactsIcon, GroupIcon, LogoIcon, MenuIcon, SearchIcon, SettingsIcon, UserIcon } from '@/components/icons';
+import { ArchiveIcon, BotIcon, CallsIcon, ChatsIcon, ContactsIcon, GroupIcon, LogoIcon, MenuIcon, SavedIcon, SearchIcon, SettingsIcon } from '@/components/icons';
 import { useVortexStore } from '@/lib/store/useVortexStore';
 import { Menu } from '@/components/ui/Menu';
+import { SAVED_MESSAGES_ROOM } from '@/lib/p2p/trysteroSetup';
 
-export function Sidebar(): React.JSX.Element {
+interface SidebarProps {
+  onOpenSharedMedia: (roomId: string) => void;
+}
+
+export function Sidebar({ onOpenSharedMedia }: SidebarProps): React.JSX.Element {
   const router = useRouter();
   const profile = useVortexStore((state) => state.profile);
   const did = useVortexStore((state) => state.currentDid?.did ?? '');
+  const startRoom = useVortexStore((state) => state.startRoom);
   const [query, setQuery] = useState('');
   const [profileOpen, setProfileOpen] = useState(false);
   const [composeOpen, setComposeOpen] = useState(false);
@@ -46,6 +52,7 @@ export function Sidebar(): React.JSX.Element {
             <MenuIcon size={18} />
           </button>
           <Menu open={menuOpen} align="right" onClose={() => setMenuOpen(false)} items={[
+            { label: 'Saved Messages', icon: <SavedIcon size={16} />, onSelect: () => { setMenuOpen(false); try { startRoom(SAVED_MESSAGES_ROOM); router.push('/chat/' + encodeURIComponent(SAVED_MESSAGES_ROOM)); } catch (error) { console.error('Failed to open Saved Messages:', error); } } },
             { label: 'New Group', icon: <GroupIcon size={16} />, onSelect: () => { setMenuOpen(false); setComposeOpen(true); } },
             { label: 'New Bot', icon: <BotIcon size={16} />, onSelect: () => { setMenuOpen(false); router.push('/create-bot'); } },
             { label: 'Contacts', icon: <ContactsIcon size={16} />, onSelect: () => { setMenuOpen(false); setShowContacts(true); } },
@@ -71,7 +78,7 @@ export function Sidebar(): React.JSX.Element {
             <button type="button" onClick={() => setShowContacts(true)} className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs text-gotoap-ink-muted hover:bg-gotoap-hover hover:text-gotoap-ink"><ContactsIcon size={14} /> Contacts</button>
             <button type="button" onClick={() => router.push('/calls')} className="hidden items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs text-gotoap-ink-muted hover:bg-gotoap-hover hover:text-gotoap-ink sm:flex"><CallsIcon size={14} /> Calls</button>
           </nav>
-          <ChatList query={query} />
+                    <ChatList query={query} onOpenSharedMedia={onOpenSharedMedia} />
         </>
       )}
       <footer className="flex items-center gap-2 border-t border-gotoap-line px-2 py-1.5">

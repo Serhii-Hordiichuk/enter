@@ -1,10 +1,11 @@
 'use client';
 
-/** Global search: find users, groups, bots, messages across the app. */
-import { useMemo, useState } from 'react';
+/** Global search: find users, groups, bots, messages across the app and the P2P network. */
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Avatar } from '@/components/profile/Avatar';
 import { BotIcon, GroupIcon, MessageIcon, SearchIcon, UserIcon } from '@/components/icons';
+import { directory, type DirectoryEntry } from '@/lib/p2p/discovery';
 import { useVortexStore } from '@/lib/store/useVortexStore';
 
 interface SearchResult {
@@ -16,11 +17,15 @@ interface SearchResult {
   avatarName?: string;
   online?: boolean;
   roomId?: string;
+  source: 'local' | 'network';
 }
 
 export function GlobalSearch({ onClose }: { onClose: () => void }): React.JSX.Element {
   const router = useRouter();
   const [query, setQuery] = useState('');
+  const [networkResults, setNetworkResults] = useState<DirectoryEntry[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [announced, setAnnounced] = useState(false);
   const profile = useVortexStore((state) => state.profile);
   const peerProfiles = useVortexStore((state) => state.peerProfiles);
   const groups = useVortexStore((state) => state.groups);
@@ -28,6 +33,27 @@ export function GlobalSearch({ onClose }: { onClose: () => void }): React.JSX.El
   const rooms = useVortexStore((state) => state.activeRooms);
   const messages = useVortexStore((state) => state.messages);
   const startRoom = useVortexStore((state) => state.startRoom);
+
+  useEffect(() => {
+    if (announced) return;
+    setAnnounced(true);
+    void directory.announceSelf();
+  }, [announced]);
+
+  useEffect(() => {
+    const q = query.trim();
+    if (!q) {
+      setNetworkResults([]);
+      setSearching(false);
+      return;
+    }
+    setSearching(true);
+    setNetworkResults([]);
+    void directory.searchNetwork(q, (entries) => {
+      setNetworkResults(entries);
+      setSearching(false);
+    });
+  }, [query]);
 
   const results = useMemo((): SearchResult[] => {
     const q = query.trim().toLowerCase();
@@ -37,7 +63,7 @@ export function GlobalSearch({ onClose }: { onClose: () => void }): React.JSX.El
 
     // Search current user
     if (profile.username.toLowerCase().includes(q) || profile.displayName.toLowerCase().includes(q)) {
-      found.push({ id: 'me', type: 'user', title: profile.displayName || 'You', subtitle: '@' + profile.username, avatarSeed: 'me', avatarName: profile.displayName, online: true });
+      found.push({ id: 'me', type: 'user', title: profile.displayName || 'You', subtitle: '@' + profile.username, avatarSeed: 'me', avatarName: profile.displayName, online: true, source: 'local' });
       seen.add('me');
     }
 
@@ -45,7 +71,7 @@ export function GlobalSearch({ onClose }: { onClose: () => void }): React.JSX.El
     Object.values(peerProfiles).forEach((peer) => {
       if (seen.has(peer.did)) return;
       if ((peer.displayName && peer.displayName.toLowerCase().includes(q)) || peer.did.toLowerCase().includes(q)) {
-        found.push({ id: peer.did, type: 'user', title: peer.displayName || peer.did.slice(0, 16), subtitle: peer.bio || peer.did, avatarSeed: peer.did, avatarName: peer.displayName });
+        found.push({ id: peer.did, type: 'user', title: peer.displayName || peer.did.slice(0, 16), subtitle: peer.bio || peer.did, avatarSeed: peer.did, avatarName: peer.displayName, source: 'local' });
         seen.add(peer.did);
       }
     });
@@ -54,7 +80,7 @@ export function GlobalSearch({ onClose }: { onClose: () => void }): React.JSX.El
     groups.forEach((group) => {
       if (seen.has(group.id)) return;
       if (group.title.toLowerCase().includes(q) || group.description.toLowerCase().includes(q)) {
-        found.push({ id: group.id, type: 'group', title: group.title, subtitle: group.description || group.members.length + ' members', avatarSeed: group.id, avatarName: group.title });
+        found.push({ id: group.id, type: 'group', title: group.title, subtitle: group.description || group.members.length + ' members', avatarSeed: group.id, avatarName: group.title, source: 'local' });
         seen.add(group.id);
       }
     });
@@ -63,7 +89,7 @@ export function GlobalSearch({ onClose }: { onClose: () => void }): React.JSX.El
     bots.forEach((bot) => {
       if (seen.has(bot.id)) return;
       if (bot.name.toLowerCase().includes(q) || bot.username.toLowerCase().includes(q) || bot.description.toLowerCase().includes(q)) {
-        found.push({ id: bot.id, type: 'bot', title: bot.name, subtitle: '@' + bot.username, avatarSeed: bot.id, avatarName: bot.name });
+        found.push({ id: bot.id, type: 'bot', title: bot.name, subtitle: '@' + bot.username, avatarSeed: bot.id, avatarName: bot.name, source: 'local' });
         seen.add(bot.id);
       }
     });
@@ -74,14 +100,28 @@ export function GlobalSearch({ onClose }: { onClose: () => void }): React.JSX.El
         if (seen.has(message.id)) return;
         if (message.body.toLowerCase().includes(q)) {
           const room = rooms.find((r) => r.id === message.roomId);
-          found.push({ id: message.id, type: 'message', title: message.body.slice(0, 60), subtitle: (room?.title || 'Chat') + ' - ' + new Date(message.timestamp).toLocaleDateString('en-US'), avatarSeed: message.senderDid, online: false, roomId: message.roomId });
+          found.push({ id: message.id, type: 'message', title: message.body.slice(0, 60), subtitle: (room?.title || 'Chat') + ' - ' + new Date(message.timestamp).toLocaleDateString('en-US'), avatarSeed: message.senderDid, online: false, roomId: message.roomId, source: 'local' });
           seen.add(message.id);
         }
       });
     });
 
+    // Search cached + live network directory entries
+    networkResults.forEach((entry) => {
+      const id = entry.kind === 'user' ? entry.did : entry.roomId ?? entry.did;
+      if (seen.has(id)) return;
+      if (entry.kind === 'user') {
+        found.push({ id: entry.did, type: 'user', title: entry.name, subtitle: entry.username ? '@' + entry.username : entry.did.slice(0, 16), avatarSeed: entry.did, avatarName: entry.name, source: 'network', online: true });
+      } else if (entry.kind === 'group') {
+        found.push({ id: entry.roomId ?? entry.did, type: 'group', title: entry.name, subtitle: entry.bio || 'Network group', avatarSeed: entry.did, avatarName: entry.name, source: 'network', roomId: entry.roomId });
+      } else {
+        found.push({ id: entry.did, type: 'bot', title: entry.name, subtitle: entry.username ? '@' + entry.username : 'Network bot', avatarSeed: entry.did, avatarName: entry.name, source: 'network', roomId: entry.roomId });
+      }
+      seen.add(id);
+    });
+
     return found.slice(0, 50);
-  }, [query, profile, peerProfiles, groups, bots, messages, rooms]);
+  }, [query, profile, peerProfiles, groups, bots, messages, rooms, networkResults]);
 
   const handleSelect = (result: SearchResult): void => {
     if (result.type === 'group') {
@@ -112,10 +152,16 @@ export function GlobalSearch({ onClose }: { onClose: () => void }): React.JSX.El
         <button type="button" onClick={onClose} className="rounded-lg px-3 py-1.5 text-sm text-gotoap-ink-muted hover:bg-gotoap-hover hover:text-gotoap-ink">Close</button>
       </div>
       <div className="gotoap-scroll flex-1 overflow-y-auto p-2">
-        {query && results.length === 0 ? (
-          <p className="py-8 text-center text-sm text-gotoap-ink-muted">No results for "{query}"</p>
+        {query && results.length === 0 && !searching ? (
+          <p className="py-8 text-center text-sm text-gotoap-ink-muted">{'No results for "' + query + '"'}</p>
         ) : (
           <div className="flex flex-col gap-0.5">
+            {searching && query.trim() ? (
+              <p className="flex items-center gap-2 px-2 py-2 text-xs text-gotoap-ink-faint">
+                <span className="inline-block h-3 w-3 animate-spin rounded-full border border-gotoap-accent border-t-transparent" aria-hidden="true" />
+                {'Searching the P2P network for "' + query.trim() + '"...'}
+              </p>
+            ) : null}
             {results.map((result) => (
               <button key={result.id + result.type} type="button" onClick={() => handleSelect(result)} className="flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left transition hover:bg-gotoap-hover">
                 <Avatar seed={result.avatarSeed} name={result.avatarName} size={44} online={result.online} />
@@ -123,6 +169,7 @@ export function GlobalSearch({ onClose }: { onClose: () => void }): React.JSX.El
                   <div className="flex items-center gap-1.5">
                     <TypeIcon type={result.type} />
                     <p className="truncate text-sm font-medium text-gotoap-ink">{result.title}</p>
+                    {result.source === 'network' ? <span className="shrink-0 rounded bg-gotoap-accent/15 px-1.5 text-[10px] font-medium uppercase text-gotoap-accent">network</span> : null}
                   </div>
                   <p className="truncate text-xs text-gotoap-ink-faint">{result.subtitle}</p>
                 </div>

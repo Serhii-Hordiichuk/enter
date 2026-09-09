@@ -19,6 +19,7 @@ interface MessageBubbleProps {
   replyTo: VortexMessage | null;
   myDid: string;
   query?: string;
+  highlighted?: boolean;
   onAction: (action: MessageActionKind, message: VortexMessage) => void;
   onReaction: (messageId: string, emoji: string) => void;
 }
@@ -49,7 +50,7 @@ function formatBytes(size: number): string {
   return (size / (1024 * 1024)).toFixed(1) + ' MB';
 }
 
-export function MessageBubble({ message, replyTo, myDid, query, onAction, onReaction }: MessageBubbleProps): React.JSX.Element {
+export function MessageBubble({ message, replyTo, myDid, query, highlighted, onAction, onReaction }: MessageBubbleProps): React.JSX.Element {
   const [menuOpen, setMenuOpen] = useState(false);
   const mine = message.mine;
   const time = new Date(message.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
@@ -89,7 +90,7 @@ export function MessageBubble({ message, replyTo, myDid, query, onAction, onReac
   );
 
   return (
-    <article className={'group relative flex w-full gap-2 ' + (mine ? 'justify-end' : 'justify-start')}>
+    <article className={'group relative flex w-full gap-2 ' + (mine ? 'justify-end' : 'justify-start') + (highlighted ? ' gotoap-message-flash' : '')}>
       {!mine ? (
         <div className="shrink-0 self-end">
           <Avatar seed={message.senderDid} name={shortDid(message.senderDid)} size={36} />
