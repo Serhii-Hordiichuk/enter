@@ -1,6 +1,6 @@
 'use client';
 
-/** Scrollable message list with date separators and jump-to-highlight support. */
+/** Scrollable message list with date separators, reactions, and jump-to-highlight support. */
 import { useEffect, useMemo, useRef } from 'react';
 import { MessageBubble, type MessageActionKind } from '@/components/chat/MessageBubble';
 import type { VortexMessage } from '@/lib/store/useVortexStore';
@@ -8,8 +8,10 @@ import { useVortexStore } from '@/lib/store/useVortexStore';
 
 interface ChatHistoryProps {
   roomId: string;
+  myDid: string;
   query?: string;
   onAction: (action: MessageActionKind, message: VortexMessage) => void;
+  onReaction: (messageId: string, emoji: string) => void;
 }
 
 function dayLabel(timestamp: number): string {
@@ -21,7 +23,7 @@ function dayLabel(timestamp: number): string {
   return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
 }
 
-export function ChatHistory({ roomId, query, onAction }: ChatHistoryProps): React.JSX.Element {
+export function ChatHistory({ roomId, myDid, query, onAction, onReaction }: ChatHistoryProps): React.JSX.Element {
   const messages = useVortexStore((state) => state.messages[roomId] ?? []);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const bottomAnchor = useRef<HTMLDivElement | null>(null);
@@ -59,7 +61,7 @@ export function ChatHistory({ roomId, query, onAction }: ChatHistoryProps): Reac
                 {section.day}
               </div>
               {section.items.map(({ message, replyTo }) => (
-                <MessageBubble key={message.id} message={message} replyTo={replyTo} query={query} onAction={onAction} />
+                <MessageBubble key={message.id} message={message} replyTo={replyTo} myDid={myDid} query={query} onAction={onAction} onReaction={onReaction} />
               ))}
             </div>
           ))}

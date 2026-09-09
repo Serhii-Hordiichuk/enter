@@ -5,7 +5,7 @@ import type {
   Room,
 } from '@trystero-p2p/core';
 
-export type MessageKind = 'text' | 'sticker' | 'voice' | 'file';
+export type MessageKind = 'text' | 'sticker' | 'voice' | 'file' | 'reaction';
 
 export type PeerProfilePayload = {
   did: string;
@@ -42,6 +42,7 @@ export type ChatWireMessage = {
   receiptIds?: string[];
   profile?: PeerProfilePayload;
   call?: CallSignal;
+  reactions?: { emoji: string; peers: string[] }[];
 };
 
 export interface GotoapRoomHandle {

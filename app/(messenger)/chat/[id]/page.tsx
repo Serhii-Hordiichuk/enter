@@ -1,6 +1,6 @@
 'use client';
 
-/** Chat room page: P2P messaging, typing, receipts, media, and the AI panel. */
+/** Chat room page: P2P messaging, typing, receipts, media, reactions, and the AI panel. */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ChatHeader } from '@/components/chat/ChatHeader';
@@ -8,6 +8,7 @@ import { ChatHistory } from '@/components/chat/ChatHistory';
 import { MessageInput } from '@/components/chat/MessageInput';
 import { ChatSearchOverlay } from '@/components/chat/ChatSearchOverlay';
 import { AiAssistant } from '@/components/ai/AiAssistant';
+import { ChatProfilePanel } from "@/components/chat/ChatProfilePanel";
 import { ForwardDialog } from '@/components/chats/ForwardDialog';
 import { PinIcon } from '@/components/icons';
 import type { MessageActionKind } from '@/components/chat/MessageBubble';
@@ -18,7 +19,7 @@ import { getStoredDIDKeyPair } from '@/lib/did/keyGenerator';
 import { playMessageChime, requestNotificationPermission, showIncomingMessageNotification } from '@/lib/notifications';
 import {
   broadcastProfile, deleteSentMessage, editSentMessage, forwardMessage, sendChatMessage,
-  sendReadReceipts, sendTypingIndicator,
+  sendReadReceipts, sendReaction, sendTypingIndicator,
 } from '@/lib/messaging/messenger';
 
 export default function ChatPage(): React.JSX.Element {
@@ -30,9 +31,11 @@ export default function ChatPage(): React.JSX.Element {
   const startRoom = useVortexStore((state) => state.startRoom);
   const rooms = useVortexStore((state) => state.activeRooms);
   const profile = useVortexStore((state) => state.profile);
+  const currentDid = useVortexStore((state) => state.currentDid);
   const setPeers = useVortexStore((state) => state.setPeers);
   const hydrateRoom = useVortexStore((state) => state.hydrateRoom);
   const deleteRoom = useVortexStore((state) => state.deleteRoom);
+  const toggleReaction = useVortexStore((state) => state.toggleReaction);
   const messages = useVortexStore((state) => state.messages[roomId] ?? []);
 
   const [typingPeers, setTypingPeers] = useState<string[]>([]);
@@ -42,12 +45,14 @@ export default function ChatPage(): React.JSX.Element {
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
   const [pinnedId, setPinnedId] = useState<string | null>(null);
+  const [profilePanelOpen, setProfilePanelOpen] = useState(false);
   const typingTimers = useRef(new Map<string, number>());
 
   const room = rooms.find((item) => item.id === roomId) ?? null;
   const peerName = room?.title || (room?.peerDid ? room.peerDid.slice(0, 16) + '...' : roomId);
+  const myDid = currentDid?.did ?? getStoredDIDKeyPair()?.did ?? 'anonymous';
+  const peerCount = useVortexStore((state) => (state.peers[roomId] ?? []).length);
 
-  // Register the room and hydrate the history once.
   useEffect(() => {
     try {
       ensureDid();
@@ -58,7 +63,6 @@ export default function ChatPage(): React.JSX.Element {
     }
   }, [roomId, ensureDid, startRoom, hydrateRoom]);
 
-  // Join the P2P room, exchange profiles, and consume wire events.
   useEffect(() => {
     let disposed = false;
     const join = async (): Promise<void> => {
@@ -69,101 +73,88 @@ export default function ChatPage(): React.JSX.Element {
         const me = getStoredDIDKeyPair();
         if (me) await broadcastProfile(roomId, { did: me.did, displayName: profile.displayName || undefined, bio: profile.bio || undefined, colorId: profile.colorId });
       } catch (error) {
-        console.error('Failed to join the P2P room:', error);
+        console.error('Failed to join the P2P room', error);
       }
     };
     void join();
-    const offMessage = webrtcManager.onMessage(roomId, (wire) => {
-      if (wire.typing) {
-        setTypingPeers((current) => (current.includes(wire.senderDid) ? current : [...current, wire.senderDid]));
-        const previous = typingTimers.current.get(wire.senderDid);
-        if (previous) window.clearTimeout(previous);
-        typingTimers.current.set(wire.senderDid, window.setTimeout(() => {
-          setTypingPeers((current) => current.filter((item) => item !== wire.senderDid));
-        }, 3000));
-        return;
+    return () => { disposed = true; };
+  }, [roomId, profile]);
+
+  useEffect(() => {
+    const offPeer = webrtcManager.onPeerEvent(roomId, (event) => {
+      const peers = webrtcManager.getPeerIds(roomId).map((peerId) => ({ peerId, connectedAt: Date.now() }));
+      setPeers(roomId, peers);
+      if (event.type === 'join' && peers.length > 0) {
+        void sendReadReceipts(roomId, peers.map((peer) => peer.peerId));
       }
-      if (Array.isArray(wire.receiptIds)) {
-        for (const id of wire.receiptIds) {
-          useVortexStore.getState().markViewed(roomId, id);
+    });
+    const offMessage = webrtcManager.onMessage(roomId, async (payload, peerId) => {
+      try {
+        if (payload.typing) {
+          setTypingPeers((current) => Array.from(new Set([...current, peerId])));
+          const existing = typingTimers.current.get(peerId);
+          if (existing) window.clearTimeout(existing);
+          typingTimers.current.set(peerId, window.setTimeout(() => {
+            setTypingPeers((current) => current.filter((item) => item !== peerId));
+            typingTimers.current.delete(peerId);
+          }, 3000));
+          return;
         }
-        return;
-      }
-      if (wire.profile) {
-        const name = wire.profile.displayName;
-        if (name) useVortexStore.getState().setPeerProfile(wire.senderDid, { did: wire.senderDid, displayName: name, bio: wire.profile.bio, colorId: wire.profile.colorId });
-        return;
-      }
-      if (typeof wire.body !== 'string' || !wire.id) return;
-      const muted = useVortexStore.getState().activeRooms.find((item) => item.id === roomId)?.muted ?? false;
-      if (!muted) {
-        playMessageChime();
-        const preview = wire.encrypted ? 'New encrypted message' : wire.body.slice(0, 120);
-        showIncomingMessageNotification(peerName, preview, () => router.push('/chat/' + encodeURIComponent(roomId)));
-      }
-      void useVortexStore.getState().receiveWireMessage(roomId, wire);
-      void sendReadReceipts(roomId, [wire.id]).catch(() => undefined);
-    });
-    const offPeers = webrtcManager.onPeerEvent(roomId, (event) => {
-      const peerIds = webrtcManager.getPeerIds(roomId);
-      setPeers(roomId, peerIds.map((peerId) => ({ peerId, connectedAt: Date.now() })));
-      if (event.type === 'join') {
-        const me = getStoredDIDKeyPair();
-        if (me) void broadcastProfile(roomId, { did: me.did, displayName: profile.displayName || undefined, bio: profile.bio || undefined, colorId: profile.colorId });
+        if (payload.receiptIds) {
+          useVortexStore.getState().markAllViewed(roomId);
+          return;
+        }
+        if (payload.profile) {
+          useVortexStore.getState().setPeerProfile(payload.profile.did, payload.profile);
+          return;
+        }
+        if (payload.kind === 'reaction') {
+          try { const data = JSON.parse(payload.body) as { messageId?: string; emoji?: string }; if (data.messageId && data.emoji) useVortexStore.getState().toggleReaction(roomId, data.messageId, data.emoji, payload.senderDid); } catch { /* ignore */ }
+          return;
+        }
+        await useVortexStore.getState().receiveWireMessage(roomId, payload);
+        if (!room?.muted && payload.senderDid !== myDid && document.hidden) {
+          void playMessageChime();
+          void showIncomingMessageNotification(peerName, payload.body.slice(0, 80));
+        }
+      } catch (error) {
+        console.error('Failed to handle an incoming message', error);
       }
     });
-    return () => {
-      disposed = true;
-      offMessage();
-      offPeers();
-    };
-  }, [roomId, peerName, router, profile.displayName, profile.bio, profile.colorId, setPeers]);
+    return () => { offPeer(); offMessage(); };
+  }, [roomId, myDid, peerName, room?.muted, setPeers]);
 
-  const refreshPeers = useCallback((): void => {
-    setPeers(roomId, webrtcManager.getPeerIds(roomId).map((peerId) => ({ peerId, connectedAt: Date.now() })));
-  }, [roomId, setPeers]);
+  useEffect(() => { useVortexStore.getState().markRoomOpened(roomId); }, [roomId]);
 
-  useEffect(() => {
-    const timer = window.setInterval(refreshPeers, 4000);
-    return () => window.clearInterval(timer);
-  }, [refreshPeers]);
-
-  const peerCount = webrtcManager.getPeerIds(roomId).length;
-
-  // Mark incoming peer messages as viewed locally.
-  useEffect(() => {
-    const unread = messages.filter((message) => !message.mine && !message.viewed && !message.deletedAt);
-    if (unread.length === 0) return;
-    const timer = window.setTimeout(() => {
-      for (const message of unread) useVortexStore.getState().markViewed(roomId, message.id);
-    }, 600);
-    return () => window.clearTimeout(timer);
-  }, [messages, roomId]);
-
-  const handleSendText = useCallback((body: string, replyToId: string | null): void => {
-    void sendChatMessage(roomId, body, { kind: 'text', replyToId }).catch((error) => console.error('Send failed:', error));
+  const handleSendText = useCallback((text: string, replyToId: string | null = null) => {
+    void sendChatMessage(roomId, text, { replyToId }).catch((error) => console.error('Send failed:', error));
   }, [roomId]);
 
-  const handleSendSticker = useCallback((stickerId: string): void => {
-    void sendChatMessage(roomId, 'sticker:' + stickerId, { kind: 'sticker' }).catch((error) => console.error('Send failed:', error));
+  const handleSendSticker = useCallback((stickerId: string) => {
+    void sendChatMessage(roomId, 'sticker:' + stickerId, { kind: 'sticker' }).catch((error) => console.error('Send sticker failed:', error));
   }, [roomId]);
 
-  const handleSendVoice = useCallback((dataUri: string, durationMs: number): void => {
-    void sendChatMessage(roomId, 'Voice message', { kind: 'voice', media: { name: 'voice-note.webm', mime: 'audio/webm', dataUri, size: Math.round(dataUri.length * 0.75), durationMs } }).catch((error) => console.error('Send failed:', error));
+  const handleSendVoice = useCallback((dataUri: string, durationMs: number) => {
+    const media = { name: 'voice-message.opus', mime: 'audio/ogg', size: Math.floor(dataUri.length * 0.75), dataUri, durationMs };
+    void sendChatMessage(roomId, '', { kind: 'voice', media }).catch((error) => console.error('Send voice failed:', error));
   }, [roomId]);
 
-  const handleSendFile = useCallback((name: string, mime: string, dataUri: string, size: number): void => {
-    void sendChatMessage(roomId, name, { kind: 'file', media: { name, mime, dataUri, size } }).catch((error) => console.error('Send failed:', error));
+  const handleSendFile = useCallback((name: string, mime: string, dataUri: string, size: number) => {
+    const media = { name, mime, size, dataUri };
+    void sendChatMessage(roomId, name, { kind: 'file', media }).catch((error) => console.error('Send file failed:', error));
   }, [roomId]);
 
-  const handleEditSave = useCallback((messageId: string, body: string): void => {
+  const handleEditSave = useCallback((messageId: string, body: string) => {
     setEditing(null);
     void editSentMessage(roomId, messageId, body).catch((error) => console.error('Edit failed:', error));
   }, [roomId]);
 
-  const handleTyping = useCallback((): void => {
-    void sendTypingIndicator(roomId);
-  }, [roomId]);
+  const handleTyping = useCallback((): void => { void sendTypingIndicator(roomId); }, [roomId]);
+
+  const handleReaction = useCallback((messageId: string, emoji: string) => {
+    toggleReaction(roomId, messageId, emoji, myDid);
+    void sendReaction(roomId, messageId, emoji).catch((error) => console.error('Reaction failed:', error));
+  }, [roomId, myDid, toggleReaction]);
 
   const handleMessageAction = useCallback((action: MessageActionKind, message: VortexMessage): void => {
     const messageId = message.id;
@@ -189,11 +180,8 @@ export default function ChatPage(): React.JSX.Element {
           onOpenSearch={() => setSearchOpen(true)}
           onToggleAiPanel={() => setAiPanelOpen((value) => !value)}
           onBack={() => router.push('/')}
-          onLeave={() => {
-            deleteRoom(roomId);
-            void webrtcManager.leave(roomId);
-            router.push('/');
-          }}
+          onLeave={() => { deleteRoom(roomId); void webrtcManager.leave(roomId); router.push('/'); }}
+          onOpenProfile={() => setProfilePanelOpen(true)}
         />
         {pinnedMessage ? (
           <div className="flex items-center gap-2 border-b border-gotoap-line bg-gotoap-panel/90 px-4 py-1.5 text-[13px]">
@@ -202,7 +190,7 @@ export default function ChatPage(): React.JSX.Element {
             <button type="button" onClick={() => setPinnedId(null)} className="ml-auto text-xs text-gotoap-accent hover:underline">Unpin</button>
           </div>
         ) : null}
-        <ChatHistory roomId={roomId} onAction={handleMessageAction} />
+        <ChatHistory roomId={roomId} myDid={myDid} onAction={handleMessageAction} onReaction={handleReaction} />
         <MessageInput
           onSendText={handleSendText}
           onSendSticker={handleSendSticker}
@@ -216,6 +204,7 @@ export default function ChatPage(): React.JSX.Element {
           onCancelEdit={() => setEditing(null)}
         />
       </section>
+      {profilePanelOpen ? <ChatProfilePanel roomId={roomId} onClose={() => setProfilePanelOpen(false)} /> : null}
       {aiPanelOpen ? <AiAssistant roomId={roomId} open onClose={() => setAiPanelOpen(false)} /> : null}
       {searchOpen ? <ChatSearchOverlay roomId={roomId} onJumpTo={() => undefined} onClose={() => setSearchOpen(false)} /> : null}
       <ForwardDialog

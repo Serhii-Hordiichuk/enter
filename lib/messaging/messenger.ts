@@ -127,6 +127,17 @@ export async function sendReadReceipts(roomId: string, ids: string[]): Promise<v
   }
 }
 
+/** Sends a reaction toggle for a message (not persisted, ephemeral). */
+export async function sendReaction(roomId: string, messageId: string, emoji: string): Promise<void> {
+  try {
+    const me = requireDid();
+    const wire: ChatWireMessage = { id: crypto.randomUUID(), senderDid: me.did, body: JSON.stringify({ messageId, emoji }), timestamp: Date.now(), signature: "", encrypted: false, kind: "reaction" };
+    await webrtcManager.send(roomId, wire);
+  } catch (error) {
+    console.error("Failed to send the reaction:", error);
+  }
+}
+
 /** Broadcasts the local profile to everyone in the room. */
 export async function broadcastProfile(roomId: string, profile: PeerProfilePayload): Promise<void> {
   try {

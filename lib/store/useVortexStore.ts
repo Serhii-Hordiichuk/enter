@@ -1,4 +1,4 @@
-/** Zustand store: DID, profile, peers, messages, pins, and AI mode. */
+/** Zustand store: DID, profile, peers, messages, pins, AI mode, reactions, calls. */
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
@@ -11,6 +11,7 @@ import { decryptText, deriveRoomKey } from '@/lib/crypto/encryption';
 
 export interface ChatPeer { peerId: string; connectedAt: number; }
 export interface MessageMedia { name: string; mime: string; size: number; dataUri: string; durationMs?: number; }
+export interface ReactionEntry { emoji: string; peers: string[]; }
 export interface VortexMessage {
   id: string;
   roomId: string;
@@ -27,10 +28,28 @@ export interface VortexMessage {
   deletedAt: number | null;
   viewed: boolean;
   forwarded: boolean;
+  reactions: ReactionEntry[];
+}
+export interface CallEntry {
+  id: string;
+  peerDid: string;
+  type: 'incoming' | 'outgoing' | 'missed';
+  video: boolean;
+  startedAt: number;
+  durationMs: number;
 }
 export type AiMode = 'local' | 'api';
 export type ThemeMode = 'dark' | 'system';
-export interface ActiveRoom { id: string; peerDid: string | null; title: string; pinned: boolean; muted: boolean; archived: boolean; createdAt: number; lastMessageAt: number; }
+export interface ActiveRoom {
+  id: string;
+  peerDid: string | null;
+  title: string;
+  pinned: boolean;
+  muted: boolean;
+  archived: boolean;
+  createdAt: number;
+  lastMessageAt: number;
+}
 export interface UserProfile { displayName: string; bio: string; colorId: string; }
 
 export const DEFAULT_PROFILE: UserProfile = { displayName: '', bio: '', colorId: 'blue' };
@@ -47,9 +66,7 @@ export function parsePlainPayload(raw: string): { body: string; media: MessageMe
   try {
     const parsed = JSON.parse(raw) as { body?: unknown; media?: unknown };
     if (parsed && typeof parsed.body === 'string') {
-      const media = parsed.media && typeof parsed.media === 'object'
-        ? (parsed.media as MessageMedia)
-        : null;
+      const media = parsed.media && typeof parsed.media === 'object' ? (parsed.media as MessageMedia) : null;
       return { body: parsed.body, media };
     }
   } catch {
@@ -58,7 +75,7 @@ export function parsePlainPayload(raw: string): { body: string; media: MessageMe
   return { body: raw, media: null };
 }
 
-type PersistedVortexState = Pick<VortexState, 'aiMode' | 'apiKey' | 'activeRooms' | 'profile' | 'pinnedMessages' | 'theme'>;
+type PersistedVortexState = Pick<VortexState, 'aiMode' | 'apiKey' | 'activeRooms' | 'profile' | 'pinnedMessages' | 'theme' | 'callHistory'>;
 
 interface VortexState {
   currentDid: DIDKeyPair | null;
@@ -69,6 +86,7 @@ interface VortexState {
   peerProfiles: Record<string, PeerProfilePayload>;
   pinnedMessages: Record<string, string | null>;
   unread: Record<string, number>;
+  callHistory: CallEntry[];
   aiMode: AiMode;
   apiKey: string | null;
   theme: ThemeMode;
@@ -87,6 +105,7 @@ interface VortexState {
   ingestWireMessage: (roomId: string, wire: ChatWireMessage, plainPayload: string, mine: boolean) => void;
   editMessage: (roomId: string, messageId: string, body: string, editedAt?: number) => void;
   deleteMessage: (roomId: string, messageId: string, at?: number) => void;
+  toggleReaction: (roomId: string, messageId: string, emoji: string, myDid: string) => void;
   togglePinnedMessage: (roomId: string, messageId: string) => void;
   markAllViewed: (roomId: string) => void;
   markViewed: (roomId: string, messageId: string) => void;
@@ -95,6 +114,7 @@ interface VortexState {
   hydrateRoom: (roomId: string) => Promise<void>;
   setPeers: (roomId: string, peers: ChatPeer[]) => void;
   setPeerProfile: (did: string, profile: PeerProfilePayload) => void;
+  addCall: (entry: CallEntry) => void;
 }
 
 /** Converts a wire message plus a decrypted payload into a display message. */
@@ -116,6 +136,7 @@ export function toVortexMessage(roomId: string, wire: ChatWireMessage, plainPayl
     deletedAt: wire.deleted ? wire.timestamp : null,
     viewed: false,
     forwarded: Boolean(wire.forwarded),
+    reactions: [],
   };
 }
 
@@ -142,6 +163,7 @@ export const useVortexStore = create<VortexState>()(
       peerProfiles: {},
       pinnedMessages: {},
       unread: {},
+      callHistory: [],
       aiMode: (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_DEFAULT_AI_MODE === 'api' ? 'api' : 'local') as AiMode,
       apiKey: null,
       theme: 'dark',
@@ -179,10 +201,7 @@ export const useVortexStore = create<VortexState>()(
       }),
       toggleRoomPinned: (roomId) => set((state) => {
         const room = state.activeRooms.find((item) => item.id === roomId);
-        if (room) {
-          room.pinned = !room.pinned;
-          sortRooms(state.activeRooms);
-        }
+        if (room) { room.pinned = !room.pinned; sortRooms(state.activeRooms); }
       }),
       toggleRoomMuted: (roomId) => set((state) => {
         const room = state.activeRooms.find((item) => item.id === roomId);
@@ -190,10 +209,7 @@ export const useVortexStore = create<VortexState>()(
       }),
       toggleRoomArchived: (roomId) => set((state) => {
         const room = state.activeRooms.find((item) => item.id === roomId);
-        if (room) {
-          room.archived = !room.archived;
-          sortRooms(state.activeRooms);
-        }
+        if (room) { room.archived = !room.archived; sortRooms(state.activeRooms); }
       }),
       deleteRoom: (roomId) => {
         set((state) => {
@@ -212,10 +228,7 @@ export const useVortexStore = create<VortexState>()(
         list.sort((a, b) => a.timestamp - b.timestamp);
         state.messages[roomId] = list.slice(-500);
         const room = state.activeRooms.find((item) => item.id === roomId);
-        if (room) {
-          room.lastMessageAt = Math.max(room.lastMessageAt, message.timestamp);
-          sortRooms(state.activeRooms);
-        }
+        if (room) { room.lastMessageAt = Math.max(room.lastMessageAt, message.timestamp); sortRooms(state.activeRooms); }
       }),
       ingestWireMessage: (roomId, wire, plainPayload, mine) => {
         const message = toVortexMessage(roomId, wire, plainPayload, mine);
@@ -226,34 +239,39 @@ export const useVortexStore = create<VortexState>()(
           list.sort((a, b) => a.timestamp - b.timestamp);
           state.messages[roomId] = list.slice(-500);
           const room = state.activeRooms.find((item) => item.id === roomId);
-          if (room) {
-            room.lastMessageAt = Math.max(room.lastMessageAt, message.timestamp);
-            sortRooms(state.activeRooms);
-          }
+          if (room) { room.lastMessageAt = Math.max(room.lastMessageAt, message.timestamp); sortRooms(state.activeRooms); }
           if (!mine && message.kind === 'text') state.unread[roomId] = (state.unread[roomId] ?? 0) + 1;
         });
         saveLocalHistory(roomId, mergeHistory(loadLocalHistory(roomId), wire));
       },
+      toggleReaction: (roomId, messageId, emoji, myDid) => set((state) => {
+        const list = state.messages[roomId] ?? [];
+        const target = list.find((item) => item.id === messageId);
+        if (!target) return;
+        const entry = target.reactions.find((r) => r.emoji === emoji);
+        if (entry) {
+          if (entry.peers.includes(myDid)) {
+            entry.peers = entry.peers.filter((p) => p !== myDid);
+            if (entry.peers.length === 0) target.reactions = target.reactions.filter((r) => r.emoji !== emoji);
+          } else {
+            entry.peers.push(myDid);
+          }
+        } else {
+          target.reactions.push({ emoji, peers: [myDid] });
+        }
+      }),
       editMessage: (roomId, messageId, body, editedAt = Date.now()) => {
         set((state) => {
           const list = state.messages[roomId] ?? [];
           const target = list.find((item) => item.id === messageId);
-          if (target) {
-            target.body = body;
-            target.editedAt = editedAt;
-          }
+          if (target) { target.body = body; target.editedAt = editedAt; }
         });
       },
       deleteMessage: (roomId, messageId, at = Date.now()) => {
         set((state) => {
           const list = state.messages[roomId] ?? [];
           const target = list.find((item) => item.id === messageId);
-          if (target) {
-            target.body = '';
-            target.deletedAt = at;
-            target.media = null;
-            target.kind = 'text';
-          }
+          if (target) { target.body = ''; target.deletedAt = at; target.media = null; target.kind = 'text'; }
           if (state.pinnedMessages[roomId] === messageId) state.pinnedMessages[roomId] = null;
         });
         patchLocalHistory(roomId, messageId, { deleted: true, body: '' });
@@ -262,62 +280,55 @@ export const useVortexStore = create<VortexState>()(
         state.pinnedMessages[roomId] = state.pinnedMessages[roomId] === messageId ? null : messageId;
       }),
       markAllViewed: (roomId) => set((state) => {
-        for (const message of state.messages[roomId] ?? []) {
-          if (message.mine) message.viewed = true;
-        }
+        const list = state.messages[roomId] ?? [];
+        list.forEach((item) => { item.viewed = true; });
+        state.unread[roomId] = 0;
       }),
       markViewed: (roomId, messageId) => set((state) => {
-        const message = (state.messages[roomId] ?? []).find((item) => item.id === messageId);
-        if (message) message.viewed = true;
+        const list = state.messages[roomId] ?? [];
+        const target = list.find((item) => item.id === messageId);
+        if (target) target.viewed = true;
       }),
+      markRoomOpened: (roomId) => set((state) => { state.unread[roomId] = 0; }),
       receiveWireMessage: async (roomId, wire) => {
         try {
-          if (wire.typing || wire.receiptIds || wire.profile || wire.call) return;
-          let plain = wire.body;
-          if (wire.encrypted) {
-            const key = await deriveRoomKey(roomId);
-            plain = await decryptText(JSON.parse(wire.body) as EncryptedPayload, key);
-          }
-          const me = getStoredDIDKeyPair();
-          get().ingestWireMessage(roomId, wire, plain, me ? wire.senderDid === me.did : false);
+          const did = get().currentDid;
+          if (!did) return;
+          const key = wire.encrypted ? await deriveRoomKey(roomId) : null;
+          const plain = await decryptStoredWire(roomId, wire, key);
+          get().ingestWireMessage(roomId, wire, plain, false);
         } catch (error) {
-          console.error('Failed to process the incoming wire message:', error);
+          console.error('Failed to process an incoming wire message', error);
         }
       },
-      markRoomOpened: (roomId) => set((state) => { state.unread[roomId] = 0; }),
       hydrateRoom: async (roomId) => {
         try {
-          if ((get().messages[roomId] ?? []).length > 0) return;
-          const wires = loadLocalHistory(roomId);
-          if (wires.length === 0) return;
-          const me = getStoredDIDKeyPair();
-          let key: CryptoKey | null = null;
-          try { key = await deriveRoomKey(roomId); } catch (error) { console.error('Failed to derive the room key for history:', error); }
-          const list: VortexMessage[] = [];
-          for (const wire of wires) {
-            if (wire.typing || wire.receiptIds || wire.profile || wire.call) continue;
-            const plain = await decryptStoredWire(roomId, wire, key);
-            list.push(toVortexMessage(roomId, wire, plain, me ? wire.senderDid === me.did : false));
-          }
+          const did = get().currentDid;
+          if (!did) return;
+          const stored = loadLocalHistory(roomId);
+          const key = await deriveRoomKey(roomId);
+          const decrypted = await Promise.all(
+            stored.map(async (wire) => {
+              const plain = await decryptStoredWire(roomId, wire, key);
+              return toVortexMessage(roomId, wire, plain, wire.senderDid === did.did);
+            }),
+          );
           set((state) => {
-            const existing = state.messages[roomId] ?? [];
-            if (existing.length > 0) return;
-            const merged = [...list];
-            for (const item of existing) {
-              if (!merged.some((candidate) => candidate.id === item.id)) merged.push(item);
-            }
-            merged.sort((a, b) => a.timestamp - b.timestamp);
-            state.messages[roomId] = merged.slice(-500);
+            state.messages[roomId] = decrypted.sort((a, b) => a.timestamp - b.timestamp);
           });
         } catch (error) {
-          console.error('Failed to hydrate the room history:', error);
+          console.error('Failed to hydrate room', roomId, error);
         }
       },
       setPeers: (roomId, peers) => set((state) => { state.peers[roomId] = peers; }),
       setPeerProfile: (did, profile) => set((state) => { state.peerProfiles[did] = profile; }),
+      addCall: (entry) => set((state) => {
+        state.callHistory.unshift(entry);
+        if (state.callHistory.length > 100) state.callHistory = state.callHistory.slice(0, 100);
+      }),
     })),
     {
-      name: 'gotoap-vortex-v2',
+      name: 'gotoap-vortex',
       partialize: (state): PersistedVortexState => ({
         aiMode: state.aiMode,
         apiKey: state.apiKey,
@@ -325,32 +336,8 @@ export const useVortexStore = create<VortexState>()(
         profile: state.profile,
         pinnedMessages: state.pinnedMessages,
         theme: state.theme,
+        callHistory: state.callHistory,
       }),
-      merge: (persisted, current) => {
-        const saved = persisted as Partial<PersistedVortexState>;
-        const rooms: ActiveRoom[] = (Array.isArray(saved.activeRooms) ? saved.activeRooms : []).map((room) => ({
-          id: String(room.id),
-          peerDid: typeof room.peerDid === 'string' ? room.peerDid : null,
-          title: typeof room.title === 'string' ? room.title : '',
-          pinned: Boolean(room.pinned),
-          muted: Boolean(room.muted),
-          archived: Boolean(room.archived),
-          createdAt: typeof room.createdAt === 'number' ? room.createdAt : Date.now(),
-          lastMessageAt: typeof room.lastMessageAt === 'number' ? room.lastMessageAt : Date.now(),
-        }));
-        return {
-          ...current,
-          aiMode: saved.aiMode ?? current.aiMode,
-          apiKey: saved.apiKey ?? null,
-          activeRooms: rooms,
-          profile: { ...DEFAULT_PROFILE, ...(saved.profile ?? {}) },
-          pinnedMessages: saved.pinnedMessages ?? {},
-          theme: saved.theme === 'system' ? 'system' : 'dark',
-        };
-      },
     },
   ),
 );
-
-export function useRoomMessages(roomId: string): VortexMessage[] { return useVortexStore((state) => state.messages[roomId] ?? []); }
-export function useRoomPeers(roomId: string): ChatPeer[] { return useVortexStore((state) => state.peers[roomId] ?? []); }
