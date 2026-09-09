@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { AiAssistant } from '@/components/ai/AiAssistant';
 import { ChatHistory } from '@/components/chat/ChatHistory';
@@ -12,7 +12,7 @@ import type { ChatWireMessage } from '@/lib/p2p/trysteroSetup';
 import { webrtcManager } from '@/lib/p2p/webrtcManager';
 import { useVortexStore } from '@/lib/store/useVortexStore';
 
-interface ChatPageProps { params: Promise<{ id: string }>; }
+interface ChatPageProps { params: { id: string }; }
 
 function randomId(): string {
   const bytes = crypto.getRandomValues(new Uint8Array(16));
@@ -20,8 +20,7 @@ function randomId(): string {
 }
 
 export default function ChatPage({ params }: ChatPageProps): React.JSX.Element {
-  const { id } = use(params);
-  const roomId = useMemo(() => decodeURIComponent(id), [id]);
+  const roomId = useMemo(() => decodeURIComponent(params.id), [params.id]);
   const ensureDid = useVortexStore((state) => state.ensureDid);
   const ingestWireMessage = useVortexStore((state) => state.ingestWireMessage);
   const setPeers = useVortexStore((state) => state.setPeers);
