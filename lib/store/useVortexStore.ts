@@ -1,4 +1,4 @@
-/** Zustand store: DID, profile, peers, messages, pins, AI mode, reactions, calls. */
+/** Zustand store: DID, profile, peers, messages, pins, AI mode, reactions, calls, groups, bots, privacy. */
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
@@ -38,8 +38,78 @@ export interface CallEntry {
   startedAt: number;
   durationMs: number;
 }
+export interface GroupChat {
+  id: string;
+  title: string;
+  description: string;
+  avatarColor: string;
+  ownerDid: string;
+  members: GroupMember[];
+  inviteLink: string;
+  createdAt: number;
+  isPublic: boolean;
+}
+export interface GroupMember {
+  did: string;
+  role: 'owner' | 'admin' | 'moderator' | 'member';
+  joinedAt: number;
+  displayName?: string;
+}
+export interface BotInfo {
+  id: string;
+  name: string;
+  username: string;
+  description: string;
+  avatarColor: string;
+  ownerDid: string;
+  commands: BotCommand[];
+  isPublic: boolean;
+  createdAt: number;
+}
+export interface BotCommand {
+  command: string;
+  description: string;
+}
+export interface PrivacySettings {
+  lastSeen: 'everyone' | 'contacts' | 'nobody';
+  profilePhoto: 'everyone' | 'contacts' | 'nobody';
+  phoneNumber: 'everyone' | 'contacts' | 'nobody';
+  forwardedMessages: 'everyone' | 'nobody';
+  calls: 'everyone' | 'contacts' | 'nobody';
+  groups: 'everyone' | 'contacts' | 'nobody';
+}
+export interface UserProfile {
+  displayName: string;
+  username: string;
+  bio: string;
+  phone: string;
+  email: string;
+  website: string;
+  location: string;
+  birthday: string;
+  avatarColor: string;
+  language: string;
+  timezone: string;
+  isBot: boolean;
+  isVerified: boolean;
+  isPremium: boolean;
+  lastSeen: number;
+  online: boolean;
+  privacy: PrivacySettings;
+  twoFactorEnabled: boolean;
+  recoveryEmail: string;
+  activeSessions: SessionInfo[];
+}
+export interface SessionInfo {
+  id: string;
+  device: string;
+  platform: string;
+  location: string;
+  lastActive: number;
+  current: boolean;
+}
 export type AiMode = 'local' | 'api';
-export type ThemeMode = 'dark' | 'system';
+export type ThemeMode = 'dark' | 'system' | 'light';
 export interface ActiveRoom {
   id: string;
   peerDid: string | null;
@@ -49,19 +119,47 @@ export interface ActiveRoom {
   archived: boolean;
   createdAt: number;
   lastMessageAt: number;
+  isGroup: boolean;
+  isBot: boolean;
 }
-export interface UserProfile { displayName: string; bio: string; colorId: string; }
 
-export const DEFAULT_PROFILE: UserProfile = { displayName: '', bio: '', colorId: 'blue' };
+export const DEFAULT_PROFILE: UserProfile = {
+  displayName: '',
+  username: '',
+  bio: '',
+  phone: '',
+  email: '',
+  website: '',
+  location: '',
+  birthday: '',
+  avatarColor: 'blue',
+  language: 'en',
+  timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+  isBot: false,
+  isVerified: false,
+  isPremium: false,
+  lastSeen: Date.now(),
+  online: true,
+  privacy: {
+    lastSeen: 'everyone',
+    profilePhoto: 'everyone',
+    phoneNumber: 'contacts',
+    forwardedMessages: 'everyone',
+    calls: 'everyone',
+    groups: 'everyone',
+  },
+  twoFactorEnabled: false,
+  recoveryEmail: '',
+  activeSessions: [],
+};
+
 export const AVATAR_COLOR_IDS = ['blue', 'cyan', 'green', 'orange', 'red', 'pink', 'violet'] as const;
 export type AvatarColorId = (typeof AVATAR_COLOR_IDS)[number];
 
-/** Pins first, then the most recent activity. */
 function sortRooms(rooms: ActiveRoom[]): void {
   rooms.sort((a, b) => (a.pinned === b.pinned ? b.lastMessageAt - a.lastMessageAt : a.pinned ? -1 : 1));
 }
 
-/** Parses a decrypted payload string into a body plus optional media. */
 export function parsePlainPayload(raw: string): { body: string; media: MessageMedia | null } {
   try {
     const parsed = JSON.parse(raw) as { body?: unknown; media?: unknown };
@@ -75,7 +173,7 @@ export function parsePlainPayload(raw: string): { body: string; media: MessageMe
   return { body: raw, media: null };
 }
 
-type PersistedVortexState = Pick<VortexState, 'aiMode' | 'apiKey' | 'activeRooms' | 'profile' | 'pinnedMessages' | 'theme' | 'callHistory'>;
+type PersistedVortexState = Pick<VortexState, 'aiMode' | 'apiKey' | 'activeRooms' | 'profile' | 'pinnedMessages' | 'theme' | 'callHistory' | 'groups' | 'bots' | 'peerProfiles'>;
 
 interface VortexState {
   currentDid: DIDKeyPair | null;
@@ -87,6 +185,8 @@ interface VortexState {
   pinnedMessages: Record<string, string | null>;
   unread: Record<string, number>;
   callHistory: CallEntry[];
+  groups: GroupChat[];
+  bots: BotInfo[];
   aiMode: AiMode;
   apiKey: string | null;
   theme: ThemeMode;
@@ -115,9 +215,16 @@ interface VortexState {
   setPeers: (roomId: string, peers: ChatPeer[]) => void;
   setPeerProfile: (did: string, profile: PeerProfilePayload) => void;
   addCall: (entry: CallEntry) => void;
+  createGroup: (title: string, description: string, isPublic: boolean) => string;
+  updateGroup: (groupId: string, patch: Partial<GroupChat>) => void;
+  deleteGroup: (groupId: string) => void;
+  addGroupMember: (groupId: string, did: string, role?: GroupMember['role']) => void;
+  removeGroupMember: (groupId: string, did: string) => void;
+  createBot: (name: string, username: string, description: string) => string;
+  updateBot: (botId: string, patch: Partial<BotInfo>) => void;
+  deleteBot: (botId: string) => void;
 }
 
-/** Converts a wire message plus a decrypted payload into a display message. */
 export function toVortexMessage(roomId: string, wire: ChatWireMessage, plainPayload: string, mine: boolean): VortexMessage {
   const parsed = parsePlainPayload(plainPayload);
   return {
@@ -140,7 +247,6 @@ export function toVortexMessage(roomId: string, wire: ChatWireMessage, plainPayl
   };
 }
 
-/** Decrypts a stored wire body; falls back to a placeholder when undecryptable. */
 async function decryptStoredWire(roomId: string, wire: ChatWireMessage, key: CryptoKey | null): Promise<string> {
   if (!wire.encrypted) return wire.body;
   if (!key) return '(encrypted message)';
@@ -164,6 +270,8 @@ export const useVortexStore = create<VortexState>()(
       pinnedMessages: {},
       unread: {},
       callHistory: [],
+      groups: [],
+      bots: [],
       aiMode: (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_DEFAULT_AI_MODE === 'api' ? 'api' : 'local') as AiMode,
       apiKey: null,
       theme: 'dark',
@@ -176,7 +284,7 @@ export const useVortexStore = create<VortexState>()(
         }
         throw new Error('The DID wallet has not been created yet');
       },
-      updateProfile: (patch) => set((state) => { state.profile = { ...state.profile, ...patch }; }),
+      updateProfile: (patch) => set((state) => { state.profile = { ...state.profile, ...patch, privacy: { ...state.profile.privacy, ...(patch.privacy ?? {}) } }; }),
       setApiKey: (apiKey) => set((state) => { state.apiKey = apiKey && apiKey.trim().length > 0 ? apiKey.trim() : null; }),
       switchAiMode: (mode) => set((state) => { state.aiMode = mode; }),
       startRoom: (roomId, peerDid = null) => {
@@ -187,7 +295,7 @@ export const useVortexStore = create<VortexState>()(
           if (existing) {
             existing.peerDid = peerDid ?? existing.peerDid;
           } else {
-            state.activeRooms.unshift({ id: normalized, peerDid, title: '', pinned: false, muted: false, archived: false, createdAt: Date.now(), lastMessageAt: Date.now() });
+            state.activeRooms.unshift({ id: normalized, peerDid, title: '', pinned: false, muted: false, archived: false, createdAt: Date.now(), lastMessageAt: Date.now(), isGroup: false, isBot: false });
           }
           sortRooms(state.activeRooms);
           if (!state.messages[normalized]) state.messages[normalized] = [];
@@ -313,9 +421,7 @@ export const useVortexStore = create<VortexState>()(
               return toVortexMessage(roomId, wire, plain, wire.senderDid === did.did);
             }),
           );
-          set((state) => {
-            state.messages[roomId] = decrypted.sort((a, b) => a.timestamp - b.timestamp);
-          });
+          set((state) => { state.messages[roomId] = decrypted.sort((a, b) => a.timestamp - b.timestamp); });
         } catch (error) {
           console.error('Failed to hydrate room', roomId, error);
         }
@@ -325,6 +431,76 @@ export const useVortexStore = create<VortexState>()(
       addCall: (entry) => set((state) => {
         state.callHistory.unshift(entry);
         if (state.callHistory.length > 100) state.callHistory = state.callHistory.slice(0, 100);
+      }),
+      createGroup: (title, description, isPublic) => {
+        const did = get().currentDid;
+        if (!did) throw new Error('No DID');
+        const groupId = 'group-' + crypto.randomUUID();
+        const group: GroupChat = {
+          id: groupId,
+          title: title.trim(),
+          description: description.trim(),
+          avatarColor: get().profile.avatarColor,
+          ownerDid: did.did,
+          members: [{ did: did.did, role: 'owner', joinedAt: Date.now(), displayName: get().profile.displayName }],
+          inviteLink: 'gotoap://join/' + groupId,
+          createdAt: Date.now(),
+          isPublic,
+        };
+        set((state) => {
+          state.groups.push(group);
+          state.activeRooms.unshift({ id: groupId, peerDid: null, title: group.title, pinned: false, muted: false, archived: false, createdAt: Date.now(), lastMessageAt: Date.now(), isGroup: true, isBot: false });
+          sortRooms(state.activeRooms);
+        });
+        return groupId;
+      },
+      updateGroup: (groupId, patch) => set((state) => {
+        const group = state.groups.find((g) => g.id === groupId);
+        if (group) Object.assign(group, patch);
+      }),
+      deleteGroup: (groupId) => set((state) => {
+        state.groups = state.groups.filter((g) => g.id !== groupId);
+        state.activeRooms = state.activeRooms.filter((r) => r.id !== groupId);
+      }),
+      addGroupMember: (groupId, did, role = 'member') => set((state) => {
+        const group = state.groups.find((g) => g.id === groupId);
+        if (group && !group.members.find((m) => m.did === did)) {
+          group.members.push({ did, role, joinedAt: Date.now() });
+        }
+      }),
+      removeGroupMember: (groupId, did) => set((state) => {
+        const group = state.groups.find((g) => g.id === groupId);
+        if (group) group.members = group.members.filter((m) => m.did !== did);
+      }),
+      createBot: (name, username, description) => {
+        const did = get().currentDid;
+        if (!did) throw new Error('No DID');
+        const botId = 'bot-' + crypto.randomUUID();
+        const bot: BotInfo = {
+          id: botId,
+          name: name.trim(),
+          username: username.trim().toLowerCase(),
+          description: description.trim(),
+          avatarColor: get().profile.avatarColor,
+          ownerDid: did.did,
+          commands: [],
+          isPublic: false,
+          createdAt: Date.now(),
+        };
+        set((state) => {
+          state.bots.push(bot);
+          state.activeRooms.unshift({ id: botId, peerDid: botId, title: bot.name, pinned: false, muted: false, archived: false, createdAt: Date.now(), lastMessageAt: Date.now(), isGroup: false, isBot: true });
+          sortRooms(state.activeRooms);
+        });
+        return botId;
+      },
+      updateBot: (botId, patch) => set((state) => {
+        const bot = state.bots.find((b) => b.id === botId);
+        if (bot) Object.assign(bot, patch);
+      }),
+      deleteBot: (botId) => set((state) => {
+        state.bots = state.bots.filter((b) => b.id !== botId);
+        state.activeRooms = state.activeRooms.filter((r) => r.id !== botId);
       }),
     })),
     {
@@ -337,6 +513,9 @@ export const useVortexStore = create<VortexState>()(
         pinnedMessages: state.pinnedMessages,
         theme: state.theme,
         callHistory: state.callHistory,
+        groups: state.groups,
+        bots: state.bots,
+        peerProfiles: state.peerProfiles,
       }),
     },
   ),
