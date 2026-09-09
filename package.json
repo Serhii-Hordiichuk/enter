@@ -1,0 +1,40 @@
+{
+  "name": "gotoap",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Готоап — децентралізований P2P-месенджер з вбудованим ШІ без серверів зберігання",
+  "license": "MIT",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "vercel-build": "next build"
+  },
+  "dependencies": {
+    "@mlc-ai/web-llm": "0.2.85",
+    "@stablelib/ed25519": "2.1.0",
+    "@trystero-p2p/torrent": "0.25.4",
+    "immer": "10.1.1",
+    "next": "14.2.35",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "trystero": "0.25.4",
+    "webtorrent": "1.9.7",
+    "zustand": "4.5.7"
+  },
+  "devDependencies": {
+    "@types/node": "20.19.43",
+    "@types/react": "18.3.31",
+    "@types/react-dom": "18.3.7",
+    "@types/webtorrent": "0.109.10",
+    "autoprefixer": "10.4.27",
+    "eslint": "8.57.1",
+    "eslint-config-next": "14.2.35",
+    "postcss": "8.4.49",
+    "tailwindcss": "3.4.19",
+    "typescript": "5.5.4"
+  }
+}
+
