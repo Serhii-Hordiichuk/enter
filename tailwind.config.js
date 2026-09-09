@@ -33,10 +33,32 @@ module.exports = {
           800: '#075985',
           900: '#0c4a6e',
         },
+        // Gotoap messenger palette (modern Telegram-like dark theme).
+        gotoap: {
+          bg: '#0e1621',
+          panel: '#17212b',
+          hover: '#202b36',
+          active: '#2b5278',
+          line: '#0b141d',
+          bubble: {
+            in: '#182533',
+            out: '#2b5278',
+          },
+          accent: {
+            DEFAULT: '#3390ec',
+            hover: '#4ea1f0',
+            muted: '#5288c1',
+          },
+          ink: {
+            DEFAULT: '#ffffff',
+            muted: '#708499',
+            faint: '#5f7385',
+          },
+        },
       },
       fontFamily: {
-        sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-        mono: ['JetBrains Mono', 'ui-monospace', 'monospace'],
+        sans: ['-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Consolas', 'monospace'],
       },
     },
   },

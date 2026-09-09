@@ -10,6 +10,17 @@ A decentralized P2P messenger with built-in AI that works entirely without stora
 - **State:** Zustand
 - **Deploy:** Vercel + GitHub Actions
 
+## Interface
+
+The UI follows modern messengers (Telegram-like) and ships with a fully custom, in-repo icon set (`components/icons`, no icon libraries):
+
+- Two-pane layout: chat list sidebar with search, plus a chat pane with a dotted wallpaper.
+- Local profile: display name, bio, and deterministic gradient avatars with a chosen color (`components/profile`).
+- Chats can be pinned, muted, renamed, and deleted from a custom dropdown menu.
+- Message bubbles with date separators, delivery ticks, lock badge for encrypted payloads, and a custom emoji picker.
+- The AI assistant lives in a slide-over panel that reads the last 10 messages as context.
+- Everything is stored only in the browser (localStorage) - there is no server-side profile or message store.
+
 > Architecture note for Next.js: this repository intentionally has **no `output: 'export'`**, because a static export is incompatible with the server-side Edge routes `/api/ai-proxy` and `/api/verify-did`. Vercel builds a hybrid Next.js app: static pages + Edge Functions for the API. This is a deliberate deviation from the original spec so the AI proxy actually works.
 
 ## Local run

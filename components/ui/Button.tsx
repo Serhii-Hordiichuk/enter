@@ -9,9 +9,9 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const VARIANTS: Record<ButtonVariant, string> = {
-  primary: 'bg-indigo-600 text-white hover:bg-indigo-500 focus-visible:outline-indigo-400 disabled:bg-indigo-900/60',
-  secondary: 'bg-zinc-800 text-zinc-100 hover:bg-zinc-700 focus-visible:outline-zinc-500 disabled:bg-zinc-900',
-  ghost: 'bg-transparent text-zinc-200 hover:bg-zinc-800/80 focus-visible:outline-zinc-500',
+  primary: 'bg-gotoap-accent text-white hover:bg-gotoap-accent-hover focus-visible:outline-gotoap-accent disabled:bg-gotoap-accent/40',
+  secondary: 'bg-gotoap-hover text-gotoap-ink hover:bg-[#2a3846] focus-visible:outline-gotoap-accent-muted disabled:bg-gotoap-panel',
+  ghost: 'bg-transparent text-gotoap-ink-muted hover:bg-gotoap-hover hover:text-gotoap-ink focus-visible:outline-gotoap-accent-muted',
   danger: 'bg-red-600 text-white hover:bg-red-500 focus-visible:outline-red-400',
 };
 
