@@ -1,4 +1,4 @@
-/** Zustand-стор: DID, піри, повідомлення, режим ШІ. */
+/** Zustand store: DID, peers, messages, and AI mode. */
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
@@ -47,13 +47,13 @@ export const useVortexStore = create<VortexState>()(
           set((state) => { state.currentDid = stored; });
           return stored;
         }
-        throw new Error('DID-гаманець ще не створено');
+        throw new Error('The DID wallet has not been created yet');
       },
       setApiKey: (apiKey) => set((state) => { state.apiKey = apiKey && apiKey.trim().length > 0 ? apiKey.trim() : null; }),
       switchAiMode: (mode) => set((state) => { state.aiMode = mode; }),
       startRoom: (roomId, peerDid = null) => {
         const normalized = roomId.trim();
-        if (!normalized) throw new Error('Порожній ідентифікатор кімнати');
+        if (!normalized) throw new Error('Empty room identifier');
         const localHistory = loadLocalHistory(normalized);
         set((state) => {
           const existing = state.activeRooms.find((room) => room.id === normalized);

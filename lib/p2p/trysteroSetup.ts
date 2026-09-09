@@ -1,4 +1,4 @@
-/** Ініціалізація trystero через WebTorrent-трекери. */
+/** Trystero setup over WebTorrent trackers. */
 import type {
   DataPayload,
   JoinRoomConfig,
@@ -39,13 +39,13 @@ export function getTrackerUrls(): string[] {
 
 export function normalizeRoomId(roomId: string): string {
   const normalized = roomId.trim().toLowerCase().replace(/[^a-z0-9:_-]/g, '-').slice(0, 128);
-  if (normalized.length < 3) throw new Error('Некоректний ідентифікатор кімнати');
+  if (normalized.length < 3) throw new Error('Invalid room identifier');
   return normalized;
 }
 
 export async function createRoom(roomId: string): Promise<GotoapRoomHandle> {
   try {
-    if (typeof window === 'undefined') throw new Error('Trystero доступний лише у браузері');
+    if (typeof window === 'undefined') throw new Error('Trystero is only available in the browser');
     const normalizedRoomId = normalizeRoomId(roomId);
     const { joinRoom } = await import('@trystero-p2p/torrent');
     const config: JoinRoomConfig = { appId: getAppId() };
@@ -53,7 +53,7 @@ export async function createRoom(roomId: string): Promise<GotoapRoomHandle> {
     const messageAction = room.makeAction<ChatWireMessage>('gotoap-message');
     return { room, messageAction, leave: () => room.leave() };
   } catch (error) {
-    console.error('Не вдалося створити trystero-кімнату:', error);
-    throw error instanceof Error ? error : new Error('Не вдалося створити trystero-кімнату');
+    console.error('Failed to create a trystero room:', error);
+    throw error instanceof Error ? error : new Error('Failed to create a trystero room');
   }
 }

@@ -28,7 +28,7 @@ export default function ChatPage({ params }: ChatPageProps): React.JSX.Element {
   const startRoom = useVortexStore((state) => state.startRoom);
   const [magnet, setMagnet] = useState<string | null>(null);
   const [peerCount, setPeerCount] = useState(0);
-  const [status, setStatus] = useState('Підключення…');
+  const [status, setStatus] = useState('Connecting...');
 
   useEffect(() => {
     let cancelled = false;
@@ -36,25 +36,25 @@ export default function ChatPage({ params }: ChatPageProps): React.JSX.Element {
     let unsubscribePeers: (() => void) | null = null;
     startRoom(roomId);
     ensureDid();
-    setStatus('Підключення через WebTorrent-трекери…');
+    setStatus('Connecting via WebTorrent trackers...');
     webrtcManager.join(roomId).then(() => {
       if (cancelled) return;
-      setStatus('Очікування пірів у кімнаті ' + roomId);
+      setStatus('Waiting for peers in room ' + roomId);
       setPeerCount(webrtcManager.getPeerIds(roomId).length);
       unsubscribeMessage = webrtcManager.onMessage(roomId, (wire, peerId) => {
         try {
           const publicKey = publicKeyFromDid(wire.senderDid);
           const valid = verifyMessageText(wire.body, wire.signature, publicKey);
-          if (!valid) { console.error('Отримано повідомлення з недійсним підписом від', peerId); return; }
+          if (!valid) { console.error('Received a message with an invalid signature from', peerId); return; }
           ingestWireMessage(roomId, wire, false);
-        } catch (error) { console.error('Не вдалося обробити вхідне повідомлення:', error); }
+        } catch (error) { console.error('Failed to process an incoming message:', error); }
       });
       unsubscribePeers = webrtcManager.onPeerEvent(roomId, () => {
         const peers = webrtcManager.getPeerIds(roomId).map((peerId) => ({ peerId, connectedAt: Date.now() }));
         setPeers(roomId, peers);
         setPeerCount(peers.length);
       });
-    }).catch((error: unknown) => { if (!cancelled) setStatus(error instanceof Error ? error.message : 'Не вдалося підключитись'); });
+    }).catch((error: unknown) => { if (!cancelled) setStatus(error instanceof Error ? error.message : 'Failed to connect'); });
     return () => { cancelled = true; unsubscribeMessage?.(); unsubscribePeers?.(); void webrtcManager.leave(roomId); };
   }, [roomId, ensureDid, ingestWireMessage, setPeers, startRoom]);
 
@@ -71,26 +71,26 @@ export default function ChatPage({ params }: ChatPageProps): React.JSX.Element {
     const snapshot = history.map((item) => ({ id: item.id, senderDid: item.senderDid, body: item.body, timestamp: item.timestamp, signature: item.signature, encrypted: item.encrypted }));
     saveLocalHistory(roomId, snapshot);
     try { setMagnet(await torrentHistory.seed(roomId, snapshot)); }
-    catch (error) { console.error('Сідування історії не вдалося (чат продовжує працювати через WebRTC):', error); }
+    catch (error) { console.error('History seeding failed (chat keeps working over WebRTC):', error); }
   }, [roomId, ensureDid, ingestWireMessage]);
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-3xl flex-col px-4 py-6">
       <header className="mb-3 flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <Link href="/" className="text-xs text-zinc-400 hover:text-zinc-100">← Усі чати</Link>
+          <Link href="/" className="text-xs text-zinc-400 hover:text-zinc-100">All chats</Link>
           <h1 className="truncate font-mono text-lg text-zinc-50">{roomId}</h1>
-          <p className="text-xs text-zinc-500">{status} • пірів онлайн: {peerCount}</p>
-          {magnet ? <p className="truncate text-[11px] text-zinc-600">magnet: {magnet.slice(0, 80)}…</p> : null}
+          <p className="text-xs text-zinc-500">{status} - peers online: {peerCount}</p>
+          {magnet ? <p className="truncate text-[11px] text-zinc-600">magnet: {magnet.slice(0, 80)}...</p> : null}
         </div>
-        <Link href="/settings" className="rounded-lg border border-zinc-700 px-3 py-2 text-sm text-zinc-200 hover:bg-zinc-800">ШІ</Link>
+        <Link href="/settings" className="rounded-lg border border-zinc-700 px-3 py-2 text-sm text-zinc-200 hover:bg-zinc-800">AI</Link>
       </header>
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950">
         <ChatHistory roomId={roomId} />
         <MessageInput onSend={send} />
       </div>
       <div className="mt-3"><AiAssistant roomId={roomId} /></div>
-      <p className="mt-3 text-[11px] text-zinc-600">Повідомлення шифруються AES-GCM ключем кімнати, підписуються Ed25519 і передаються напряму між браузерами. Історія також сідується як WebTorrent-торрент.</p>
+      <p className="mt-3 text-[11px] text-zinc-600">Messages are encrypted with the room AES-GCM key, signed with Ed25519, and sent directly between browsers. History is also seeded as a WebTorrent torrent.</p>
     </main>
   );
 }

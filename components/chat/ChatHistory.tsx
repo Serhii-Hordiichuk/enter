@@ -17,7 +17,7 @@ export function ChatHistory({ roomId }: ChatHistoryProps): React.JSX.Element {
   }, [messages.length, roomId]);
 
   if (messages.length === 0) {
-    return <div className="flex flex-1 items-center justify-center p-8 text-center text-sm text-zinc-500">Поки що порожньо. Надішліть перше повідомлення — воно піде напряму через WebRTC.</div>;
+    return <div className="flex flex-1 items-center justify-center p-8 text-center text-sm text-zinc-500">Nothing here yet. Send the first message - it travels directly over WebRTC.</div>;
   }
 
   return (

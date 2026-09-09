@@ -2,7 +2,7 @@
   "name": "gotoap",
   "version": "1.0.0",
   "private": true,
-  "description": "Готоап — децентралізований P2P-месенджер з вбудованим ШІ без серверів зберігання",
+  "description": "Gotoap - a decentralized P2P messenger with built-in AI and no storage servers",
   "license": "MIT",
   "scripts": {
     "dev": "next dev",

@@ -1,4 +1,4 @@
-/** Клієнт серверного ШІ через /api/ai-proxy зі стрімінгом SSE. */
+/** Server AI client through /api/ai-proxy with SSE streaming. */
 export type AiRole = 'system' | 'user' | 'assistant';
 export interface ChatMessage { role: AiRole; content: string; }
 export interface ApiProxyRequest { messages: ChatMessage[]; model?: string; }
@@ -10,7 +10,7 @@ export async function* streamProxyResponse(request: ApiProxyRequest, signal?: Ab
     if (!response.ok || !response.body) {
       let detail = '';
       try { detail = await response.text(); } catch { detail = ''; }
-      throw new Error('Помилка AI-проксі (' + String(response.status) + '): ' + (detail || response.statusText));
+      throw new Error('AI proxy error (' + String(response.status) + '): ' + (detail || response.statusText));
     }
     reader = response.body.getReader();
     const decoder = new TextDecoder();
@@ -32,17 +32,17 @@ export async function* streamProxyResponse(request: ApiProxyRequest, signal?: Ab
             const parsed = JSON.parse(data) as { delta?: string; text?: string };
             const token = parsed.delta ?? parsed.text ?? '';
             if (token) yield token;
-          } catch (error) { console.error('Не вдалося розібрати SSE-фрагмент ШІ:', error); }
+          } catch (error) { console.error('Failed to parse an AI SSE chunk:', error); }
         }
         boundary = buffer.indexOf('\n\n');
       }
     }
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') return;
-    console.error('Помилка стрімінгу AI-проксі:', error);
-    throw error instanceof Error ? error : new Error('Помилка стрімінгу AI-проксі');
+    console.error('AI proxy streaming error:', error);
+    throw error instanceof Error ? error : new Error('AI proxy streaming error');
   } finally {
-    try { reader?.releaseLock(); } catch (error) { console.error('Не вдалося звільнити SSE-рідер:', error); }
+    try { reader?.releaseLock(); } catch (error) { console.error('Failed to release the SSE reader:', error); }
   }
 }
 

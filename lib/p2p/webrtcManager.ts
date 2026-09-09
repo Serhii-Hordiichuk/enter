@@ -1,4 +1,4 @@
-/** Менеджер WebRTC-кімнат поверх trystero. */
+/** WebRTC room manager on top of trystero. */
 import type { ChatWireMessage, GotoapRoomHandle } from './trysteroSetup';
 import { createRoom } from './trysteroSetup';
 
@@ -18,7 +18,7 @@ export class WebrtcManager {
       const handle = await createRoom(roomId);
       handle.messageAction.onMessage = (data, context) => {
         for (const handler of this.messageHandlers.get(roomId) ?? []) {
-          try { handler(data, context.peerId); } catch (error) { console.error('Помилка обробника P2P-повідомлення:', error); }
+          try { handler(data, context.peerId); } catch (error) { console.error('P2P message handler error:', error); }
         }
       };
       handle.room.onPeerJoin = (peerId) => this.emitPeer(roomId, { type: 'join', peerId });
@@ -26,8 +26,8 @@ export class WebrtcManager {
       this.handles.set(roomId, handle);
       return handle;
     } catch (error) {
-      console.error('Не вдалося приєднатися до кімнати:', error);
-      throw error instanceof Error ? error : new Error('Не вдалося приєднатися до кімнати');
+      console.error('Failed to join the room:', error);
+      throw error instanceof Error ? error : new Error('Failed to join the room');
     }
   }
 
@@ -50,15 +50,15 @@ export class WebrtcManager {
       const handle = this.handles.get(roomId) ?? (await this.join(roomId));
       await handle.messageAction.send(message);
     } catch (error) {
-      console.error('Не вдалося надіслати P2P-повідомлення:', error);
-      throw error instanceof Error ? error : new Error('Не вдалося надіслати P2P-повідомлення');
+      console.error('Failed to send a P2P message:', error);
+      throw error instanceof Error ? error : new Error('Failed to send a P2P message');
     }
   }
 
   getPeerIds(roomId: string): string[] {
     const handle = this.handles.get(roomId);
     if (!handle) return [];
-    try { return Object.keys(handle.room.getPeers()); } catch (error) { console.error('Не вдалося отримати список пірів:', error); return []; }
+    try { return Object.keys(handle.room.getPeers()); } catch (error) { console.error('Failed to list peers:', error); return []; }
   }
 
   async leave(roomId: string): Promise<void> {
@@ -67,13 +67,13 @@ export class WebrtcManager {
     this.messageHandlers.delete(roomId);
     this.peerHandlers.delete(roomId);
     if (handle) {
-      try { await handle.leave(); } catch (error) { console.error('Помилка виходу з кімнати:', error); }
+      try { await handle.leave(); } catch (error) { console.error('Room leave error:', error); }
     }
   }
 
   private emitPeer(roomId: string, event: PeerEvent): void {
     for (const handler of this.peerHandlers.get(roomId) ?? []) {
-      try { handler(event); } catch (error) { console.error('Помилка обробника події піра:', error); }
+      try { handler(event); } catch (error) { console.error('Peer event handler error:', error); }
     }
   }
 }

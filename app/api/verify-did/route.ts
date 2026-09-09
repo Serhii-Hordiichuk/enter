@@ -17,15 +17,15 @@ export async function POST(request: Request): Promise<Response> {
   try {
     const body = (await request.json()) as VerifyBody;
     if (typeof body.did !== 'string' || typeof body.message !== 'string' || typeof body.signature !== 'string') {
-      return NextResponse.json({ error: 'Потрібні поля did, message та signature (base64)' }, { status: 400 });
+      return NextResponse.json({ error: 'The did, message, and signature (base64) fields are required' }, { status: 400 });
     }
     let signature: Uint8Array;
     try { signature = base64ToBytes(body.signature); }
-    catch { return NextResponse.json({ error: 'Поле signature має бути коректним base64' }, { status: 400 }); }
+    catch { return NextResponse.json({ error: 'The signature field must be valid base64' }, { status: 400 }); }
     const valid = verifyDidSignature(body.did, body.message, signature);
     return NextResponse.json({ valid, did: body.did });
   } catch (error) {
-    console.error('Помилка верифікації DID:', error);
-    return NextResponse.json({ error: 'Не вдалося верифікувати DID' }, { status: 500 });
+    console.error('DID verification error:', error);
+    return NextResponse.json({ error: 'Failed to verify the DID' }, { status: 500 });
   }
 }

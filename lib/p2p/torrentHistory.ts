@@ -1,4 +1,4 @@
-/** Історія чату у WebTorrent: локальне сховище + сідер JSON-файлу. */
+/** Chat history with WebTorrent: local storage plus a JSON snapshot seeder. */
 import type { ChatWireMessage } from './trysteroSetup';
 
 export interface TorrentHistorySnapshot { roomId: string; magnetURI: string | null; messages: ChatWireMessage[]; updatedAt: number; }
@@ -18,7 +18,7 @@ export function loadLocalHistory(roomId: string): ChatWireMessage[] {
     if (!Array.isArray(parsed)) return [];
     return parsed.filter((item) => typeof item?.id === 'string' && typeof item?.body === 'string').slice(-SNAPSHOT_LIMIT);
   } catch (error) {
-    console.error('Не вдалося прочитати локальну історію:', error);
+    console.error('Failed to read local history:', error);
     return [];
   }
 }
@@ -28,7 +28,7 @@ export function saveLocalHistory(roomId: string, messages: ChatWireMessage[]): v
     if (typeof window === 'undefined') return;
     window.localStorage.setItem(historyStorageKey(roomId), JSON.stringify(messages.slice(-SNAPSHOT_LIMIT)));
   } catch (error) {
-    console.error('Не вдалося зберегти локальну історію:', error);
+    console.error('Failed to save local history:', error);
   }
 }
 
@@ -51,7 +51,7 @@ export class TorrentHistoryManager {
         const Constructor = (module as unknown as { default: new () => WebTorrentClientLike }).default;
         this.client = new Constructor();
         return this.client;
-      }).catch((error) => { this.clientPromise = null; console.error('Не вдалося ініціалізувати WebTorrent:', error); throw error instanceof Error ? error : new Error('WebTorrent недоступний'); });
+      }).catch((error) => { this.clientPromise = null; console.error('Failed to initialize WebTorrent:', error); throw error instanceof Error ? error : new Error('WebTorrent is unavailable'); });
     }
     return this.clientPromise;
   }
@@ -63,18 +63,18 @@ export class TorrentHistoryManager {
       const file = new File([payload], 'gotoap-history-' + roomId + '.json', { type: 'application/json' });
       const magnetURI = await new Promise<string>((resolve, reject) => {
         try { client.seed(file, { name: 'gotoap-history-' + roomId }, (torrent) => resolve(torrent.magnetURI)); }
-        catch (error) { reject(error instanceof Error ? error : new Error('Не вдалося створити торрент')); }
+        catch (error) { reject(error instanceof Error ? error : new Error('Failed to create the torrent')); }
       });
       this.magnetByRoom.set(roomId, magnetURI);
       return magnetURI;
     } catch (error) {
-      console.error('Не вдалося засідерувати історію:', error);
-      throw error instanceof Error ? error : new Error('Не вдалося засідерувати історію');
+      console.error('Failed to seed history:', error);
+      throw error instanceof Error ? error : new Error('Failed to seed history');
     }
   }
 
   destroy(): void {
-    try { this.client?.destroy(); } catch (error) { console.error('Помилка зупинки WebTorrent:', error); }
+    try { this.client?.destroy(); } catch (error) { console.error('WebTorrent shutdown error:', error); }
     this.client = null;
     this.clientPromise = null;
     this.magnetByRoom.clear();

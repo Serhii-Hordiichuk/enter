@@ -1,8 +1,8 @@
 /**
- * Генерація та зберігання Ed25519-ключів і DID `did:peer`.
+ * Ed25519 key generation and `did:peer` DID storage.
  *
- * Формат DID: `did:peer:z<base58btc(publicKey)>`, де `z` — префікс multibase
- * для кодування base58btc, а `publicKey` — 32-байтовий Ed25519-ключ.
+ * DID format: `did:peer:z<base58btc(publicKey)>`, where `z` is the multibase
+ * prefix for base58btc encoding and `publicKey` is a 32-byte Ed25519 key.
  */
 import { generateKeyPair, PUBLIC_KEY_LENGTH, SECRET_KEY_LENGTH } from '@stablelib/ed25519';
 
@@ -59,7 +59,7 @@ export function decodeBase58Btc(input: string): Uint8Array {
   const bytes: number[] = [0];
   for (let i = 0; i < input.length; i += 1) {
     const digit = BASE58_ALPHABET.indexOf(input[i] as string);
-    if (digit < 0) throw new Error('Недопустимий символ base58btc: ' + String(input[i]));
+    if (digit < 0) throw new Error('Invalid base58btc character: ' + String(input[i]));
     let carry = digit;
     for (let j = 0; j < bytes.length; j += 1) {
       const value = (bytes[j] as number) * 58 + carry;
@@ -88,11 +88,11 @@ export function didFromPublicKey(publicKey: Uint8Array): string {
 }
 
 export function publicKeyFromDid(did: string): Uint8Array {
-  if (!did.startsWith(DID_METHOD_PREFIX)) throw new Error('Непідтримуваний DID-метод: ' + did);
+  if (!did.startsWith(DID_METHOD_PREFIX)) throw new Error('Unsupported DID method: ' + did);
   const multibaseValue = did.slice(DID_METHOD_PREFIX.length);
-  if (!multibaseValue.startsWith(MULTIBASE_BASE58BTC_PREFIX)) throw new Error('DID має використовувати multibase base58btc (префікс z)');
+  if (!multibaseValue.startsWith(MULTIBASE_BASE58BTC_PREFIX)) throw new Error('DID must use multibase base58btc (z prefix)');
   const publicKey = decodeBase58Btc(multibaseValue.slice(1));
-  if (publicKey.length !== PUBLIC_KEY_LENGTH) throw new Error('Неправильна довжина публічного ключа: ' + String(publicKey.length));
+  if (publicKey.length !== PUBLIC_KEY_LENGTH) throw new Error('Invalid public key length: ' + String(publicKey.length));
   return publicKey;
 }
 
@@ -100,12 +100,12 @@ export function generateDIDKeyPair(): DIDKeyPair {
   try {
     const keyPair = generateKeyPair();
     if (keyPair.publicKey.length !== PUBLIC_KEY_LENGTH || keyPair.secretKey.length !== SECRET_KEY_LENGTH) {
-      throw new Error('Згенеровано ключі Ed25519 неправильної довжини');
+      throw new Error('Generated Ed25519 keys have an invalid length');
     }
     return { did: didFromPublicKey(keyPair.publicKey), publicKey: keyPair.publicKey.slice(), secretKey: keyPair.secretKey.slice(), createdAt: Date.now() };
   } catch (error) {
-    console.error('Не вдалося згенерувати пару DID-ключів:', error);
-    throw error instanceof Error ? error : new Error('Не вдалося згенерувати пару DID-ключів');
+    console.error('Failed to generate a DID key pair:', error);
+    throw error instanceof Error ? error : new Error('Failed to generate a DID key pair');
   }
 }
 
@@ -130,17 +130,17 @@ export function deserializeKeyPair(data: string): DIDKeyPair {
   try {
     const parsed = JSON.parse(data) as Partial<SerializedDIDKeyPair>;
     if (typeof parsed.did !== 'string' || typeof parsed.publicKey !== 'string' || typeof parsed.secretKey !== 'string' || typeof parsed.createdAt !== 'number') {
-      throw new Error('Пошкоджені дані пари ключів DID');
+      throw new Error('Corrupt DID key pair data');
     }
     const publicKey = base64ToBytes(parsed.publicKey);
     const secretKey = base64ToBytes(parsed.secretKey);
     if (publicKey.length !== PUBLIC_KEY_LENGTH || secretKey.length !== SECRET_KEY_LENGTH || didFromPublicKey(publicKey) !== parsed.did) {
-      throw new Error('Пара ключів DID не пройшла перевірку цілісності');
+      throw new Error('DID key pair failed integrity verification');
     }
     return { did: parsed.did, publicKey, secretKey, createdAt: parsed.createdAt };
   } catch (error) {
-    console.error('Не вдалося десеріалізувати пару ключів DID:', error);
-    throw error instanceof Error ? error : new Error('Не вдалося десеріалізувати пару ключів DID');
+    console.error('Failed to deserialize a DID key pair:', error);
+    throw error instanceof Error ? error : new Error('Failed to deserialize a DID key pair');
   }
 }
 
@@ -151,18 +151,18 @@ export function getStoredDIDKeyPair(): DIDKeyPair | null {
     if (!raw) return null;
     return deserializeKeyPair(raw);
   } catch (error) {
-    console.error('Не вдалося завантажити збережену пару DID-ключів:', error);
+    console.error('Failed to load the stored DID key pair:', error);
     return null;
   }
 }
 
 export function storeDIDKeyPair(pair: DIDKeyPair): void {
   try {
-    if (typeof window === 'undefined' || !('localStorage' in window)) throw new Error('localStorage недоступний у цьому середовищі');
+    if (typeof window === 'undefined' || !('localStorage' in window)) throw new Error('localStorage is unavailable in this environment');
     window.localStorage.setItem(LOCAL_STORAGE_KEY, serializeKeyPair(pair));
   } catch (error) {
-    console.error('Не вдалося зберегти пару DID-ключів:', error);
-    throw error instanceof Error ? error : new Error('Не вдалось зберегти пару DID-ключів');
+    console.error('Failed to store the DID key pair:', error);
+    throw error instanceof Error ? error : new Error('Failed to store the DID key pair');
   }
 }
 
@@ -171,6 +171,6 @@ export function clearStoredDIDKeyPair(): void {
     if (typeof window === 'undefined' || !('localStorage' in window)) return;
     window.localStorage.removeItem(LOCAL_STORAGE_KEY);
   } catch (error) {
-    console.error('Не вдалося видалити пару DID-ключів:', error);
+    console.error('Failed to remove the DID key pair:', error);
   }
 }

@@ -1,4 +1,4 @@
-/** Верифікація DID та підписів Ed25519. */
+/** DID resolution and Ed25519 signature verification. */
 import { sign, verify } from '@stablelib/ed25519';
 import { publicKeyFromDid } from './keyGenerator';
 
@@ -12,8 +12,8 @@ export function resolveDid(did: string): DidDocument {
   try {
     return { id: did, publicKey: publicKeyFromDid(did) };
   } catch (error) {
-    console.error('Не вдалося розпізнати DID:', error);
-    throw error instanceof Error ? error : new Error('Не вдалося розпізнати DID');
+    console.error('Failed to resolve DID:', error);
+    throw error instanceof Error ? error : new Error('Failed to resolve DID');
   }
 }
 
@@ -21,8 +21,8 @@ export function signDidMessage(message: string, secretKey: Uint8Array): Uint8Arr
   try {
     return sign(secretKey, new TextEncoder().encode(message));
   } catch (error) {
-    console.error('Не вдалося підписати повідомлення DID:', error);
-    throw error instanceof Error ? error : new Error('Не вдалося підписати повідомлення DID');
+    console.error('Failed to sign a DID message:', error);
+    throw error instanceof Error ? error : new Error('Failed to sign a DID message');
   }
 }
 
@@ -31,7 +31,7 @@ export function verifyDidSignature(did: string, message: string, signature: Uint
     const publicKey = publicKeyFromDid(did);
     return verify(publicKey, new TextEncoder().encode(message), signature);
   } catch (error) {
-    console.error('Помилка перевірки підпису DID:', error);
+    console.error('DID signature verification error:', error);
     return false;
   }
 }

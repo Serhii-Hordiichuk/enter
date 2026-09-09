@@ -1,18 +1,18 @@
-# Готоап
+# Gotoap
 
-Децентралізований P2P-месенджер із вбудованим ШІ, який працює повністю без серверів зберігання. Усі дані передаються напряму між браузерами через WebRTC та WebTorrent.
+A decentralized P2P messenger with built-in AI that works entirely without storage servers. All data travels directly between browsers over WebRTC and WebTorrent.
 
-- **P2P-сигналінг:** Trystero через WebTorrent-трекери (`@trystero-p2p/torrent`)
-- **Історія:** WebTorrent-сідер JSON-знімків + локальне сховище браузера
-- **Ідентичність:** DID `did:peer` на ключах Ed25519 (`@stablelib/ed25519`)
-- **Шифрування:** WebCrypto AES-GCM + підписи Ed25519
-- **ШІ:** локально через WebGPU (`@mlc-ai/web-llm`, Llama-3.2-1B) або серверний Edge-проксі OpenAI/Anthropic
-- **Стан:** Zustand
-- **Деплой:** Vercel + GitHub Actions
+- **P2P signaling:** Trystero over WebTorrent trackers (`@trystero-p2p/torrent`)
+- **History:** WebTorrent seeder for JSON snapshots + local browser storage
+- **Identity:** `did:peer` DIDs on Ed25519 keys (`@stablelib/ed25519`)
+- **Encryption:** WebCrypto AES-GCM + Ed25519 signatures
+- **AI:** local via WebGPU (`@mlc-ai/web-llm`, Llama-3.2-1B) or server-side Edge proxy for OpenAI/Anthropic
+- **State:** Zustand
+- **Deploy:** Vercel + GitHub Actions
 
-> Важливо про архітектуру Next.js: у цьому репозиторії **немає `output: 'export'`**, тому що статичний експорт несумісний із серверними Edge-маршрутами `/api/ai-proxy` і `/api/verify-did`. Vercel збирає гібридний Next.js-білд: статичні сторінки + Edge Functions для API. Це свідоме відхилення від початкового ТЗ заради робочого ШІ-проксі.
+> Architecture note for Next.js: this repository intentionally has **no `output: 'export'`**, because a static export is incompatible with the server-side Edge routes `/api/ai-proxy` and `/api/verify-did`. Vercel builds a hybrid Next.js app: static pages + Edge Functions for the API. This is a deliberate deviation from the original spec so the AI proxy actually works.
 
-## Локальний запуск
+## Local run
 
 ```bash
 git clone <repo>
@@ -22,9 +22,9 @@ npm install
 npm run dev
 ```
 
-Відкрийте `http://localhost:3000`, створіть DID і почніть чат.
+Open `http://localhost:3000`, create a DID, and start a chat.
 
-Корисні скрипти:
+Useful scripts:
 
 ```bash
 npm run typecheck
@@ -33,9 +33,9 @@ npm run build
 npm start
 ```
 
-## Змінні середовища
+## Environment variables
 
-Скопіюйте `.env.example` у `.env.local`:
+Copy `.env.example` to `.env.local`:
 
 - `NEXT_PUBLIC_APP_ID=gotoap-chat`
 - `NEXT_PUBLIC_TRACKERS=wss://tracker.webtorrent.dev,...`
@@ -46,18 +46,18 @@ npm start
 - `ANTHROPIC_BASE_URL=https://api.anthropic.com`
 - `AI_PROXY_TIMEOUT_MS=30000`
 
-Публічні `NEXT_PUBLIC_*` потрапляють у браузерний бандл. Секретні ключі зберігайте лише на сервері/Vercel.
+Public `NEXT_PUBLIC_*` values end up in the browser bundle. Keep secret keys only on the server/Vercel.
 
-## Деплой на Vercel
+## Deploy to Vercel
 
-### Через Dashboard
+### Via Dashboard
 
-1. Імпортуйте репозиторій у Vercel.
+1. Import the repository into Vercel.
 2. Framework Preset: `Next.js`.
-3. Додайте Environment Variables: `OPENAI_API_KEY` та/або `ANTHROPIC_API_KEY`.
+3. Add Environment Variables: `OPENAI_API_KEY` and/or `ANTHROPIC_API_KEY`.
 4. Deploy.
 
-### Через CLI
+### Via CLI
 
 ```bash
 npm i -g vercel
@@ -65,9 +65,9 @@ vercel
 vercel --prod
 ```
 
-GitHub Actions (`.github/workflows/deploy.yml`) автоматично перевіряє `npm ci`, `npm run typecheck`, `npm run build` і деплоїть `vercel --prod --prebuilt` за секретами `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`.
+GitHub Actions (`.github/workflows/deploy.yml`) automatically runs `npm ci`, `npm run typecheck`, `npm run build`, and deploys with `vercel --prod --prebuilt` using the `VERCEL_TOKEN`, `VERCEL_ORG_ID`, and `VERCEL_PROJECT_ID` secrets.
 
-## Структура
+## Structure
 
 ```text
 /app
@@ -89,6 +89,6 @@ GitHub Actions (`.github/workflows/deploy.yml`) автоматично пере�
   /store
 ```
 
-## Ліцензія
+## License
 
-MIT. Деталі — у файлі `LICENSE` (додайте текст MIT перед публікацією).
+MIT. See `LICENSE` for details.

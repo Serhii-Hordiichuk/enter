@@ -1,4 +1,4 @@
-/** Локальний ШІ у браузері через WebLLM/WebGPU. */
+/** Local in-browser AI through WebLLM and WebGPU. */
 import type { ChatCompletionMessageParam, MLCEngine } from '@mlc-ai/web-llm';
 import type { ChatMessage } from './apiClient';
 
@@ -21,29 +21,29 @@ async function getEngine(model: string, onProgress?: LocalProgressHandler): Prom
   enginePromise = (async () => {
     const webLlm = await import('@mlc-ai/web-llm');
     const engine = await webLlm.CreateMLCEngine(model, {
-      initProgressCallback: (report) => { try { onProgress?.(report.progress, report.text); } catch (error) { console.error('Помилка callback прогресу ШІ:', error); } },
+      initProgressCallback: (report) => { try { onProgress?.(report.progress, report.text); } catch (error) { console.error('AI progress callback error:', error); } },
     });
     loadedModelId = model;
     return engine;
-  })().catch((error) => { enginePromise = null; loadedModelId = null; console.error('Не вдалося завантажити локальну модель:', error); throw error instanceof Error ? error : new Error('Не вдалося завантажити локальну модель'); });
+  })().catch((error) => { enginePromise = null; loadedModelId = null; console.error('Failed to load the local model:', error); throw error instanceof Error ? error : new Error('Failed to load the local model'); });
   return enginePromise;
 }
 
 export async function generateLocalResponse(messages: ChatMessage[], model: string = DEFAULT_LOCAL_MODEL, onProgress?: LocalProgressHandler): Promise<string> {
   try {
-    if (!isLocalAiSupported()) throw new Error('WebGPU недоступний у цьому браузері. Увімкніть WebGPU або оберіть API-режим.');
+    if (!isLocalAiSupported()) throw new Error('WebGPU is unavailable in this browser. Enable WebGPU or switch to API mode.');
     const engine = await getEngine(model, onProgress);
     const response = await engine.chat.completions.create({ messages: toWebLlmMessages(messages), temperature: 0.7, max_tokens: 512 });
     const text = response.choices[0]?.message?.content;
-    if (typeof text !== 'string' || text.length === 0) throw new Error('Локальна модель повернула порожню відповідь');
+    if (typeof text !== 'string' || text.length === 0) throw new Error('The local model returned an empty response');
     return text;
   } catch (error) {
-    console.error('Помилка локальної генерації:', error);
-    throw error instanceof Error ? error : new Error('Помилка локальної генерації');
+    console.error('Local generation error:', error);
+    throw error instanceof Error ? error : new Error('Local generation error');
   }
 }
 
 export async function unloadLocalModel(): Promise<void> {
   if (!enginePromise) return;
-  try { (await enginePromise).unload(); } catch (error) { console.error('Не вдалося вивантажити локальну модель:', error); } finally { enginePromise = null; loadedModelId = null; }
+  try { (await enginePromise).unload(); } catch (error) { console.error('Failed to unload the local model:', error); } finally { enginePromise = null; loadedModelId = null; }
 }

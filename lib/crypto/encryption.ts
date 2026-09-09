@@ -1,4 +1,4 @@
-/** Шифрування AES-GCM через WebCrypto та підписи Ed25519. */
+/** AES-GCM encryption with WebCrypto and Ed25519 signatures. */
 import { sign, verify } from '@stablelib/ed25519';
 
 export interface EncryptedPayload {
@@ -30,8 +30,8 @@ export async function deriveRoomKey(roomId: string, saltText = 'gotoap-room-key-
     const keyMaterial = await crypto.subtle.importKey('raw', new TextEncoder().encode(roomId), { name: 'PBKDF2' }, false, ['deriveKey']);
     return crypto.subtle.deriveKey({ name: 'PBKDF2', salt: new TextEncoder().encode(saltText), iterations: 100000, hash: 'SHA-256' }, keyMaterial, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
   } catch (error) {
-    console.error('Не вдалося створити ключ кімнати:', error);
-    throw error instanceof Error ? error : new Error('Не вдалося створити ключ кімнати');
+    console.error('Failed to derive the room key:', error);
+    throw error instanceof Error ? error : new Error('Failed to derive the room key');
   }
 }
 
@@ -41,8 +41,8 @@ export async function encryptText(plaintext: string, key: CryptoKey): Promise<En
     const ciphertext = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, new TextEncoder().encode(plaintext)));
     return { iv: bytesToBase64(iv), ciphertext: bytesToBase64(ciphertext) };
   } catch (error) {
-    console.error('Не вдалося зашифрувати повідомлення:', error);
-    throw error instanceof Error ? error : new Error('Не вдалося зашифрувати повідомлення');
+    console.error('Failed to encrypt the message:', error);
+    throw error instanceof Error ? error : new Error('Failed to encrypt the message');
   }
 }
 
@@ -51,8 +51,8 @@ export async function decryptText(payload: EncryptedPayload, key: CryptoKey): Pr
     const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: base64ToBytes(payload.iv) }, key, base64ToBytes(payload.ciphertext));
     return new TextDecoder().decode(decrypted);
   } catch (error) {
-    console.error('Не вдалося розшифрувати повідомлення:', error);
-    throw error instanceof Error ? error : new Error('Не вдалося розшифрувати повідомлення');
+    console.error('Failed to decrypt the message:', error);
+    throw error instanceof Error ? error : new Error('Failed to decrypt the message');
   }
 }
 
@@ -60,8 +60,8 @@ export function signMessageText(message: string, secretKey: Uint8Array): string 
   try {
     return bytesToBase64(sign(secretKey, new TextEncoder().encode(message)));
   } catch (error) {
-    console.error('Не вдалося підписати повідомлення:', error);
-    throw error instanceof Error ? error : new Error('Не вдалося підписати повідомлення');
+    console.error('Failed to sign the message:', error);
+    throw error instanceof Error ? error : new Error('Failed to sign the message');
   }
 }
 
@@ -69,7 +69,7 @@ export function verifyMessageText(message: string, signatureBase64: string, publ
   try {
     return verify(publicKey, new TextEncoder().encode(message), base64ToBytes(signatureBase64));
   } catch (error) {
-    console.error('Помилка перевірки підпису повідомлення:', error);
+    console.error('Message signature verification error:', error);
     return false;
   }
 }
