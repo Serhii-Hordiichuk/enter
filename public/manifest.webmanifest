@@ -1,0 +1,26 @@
+{
+  "name": "Gotoap - Decentralized P2P Messenger",
+  "short_name": "Gotoap",
+  "description": "A fully decentralized P2P messenger with built-in AI: WebRTC, WebTorrent, DIDs, and in-browser local AI.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0e1621",
+  "theme_color": "#0e1621",
+  "categories": ["social", "communication"],
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

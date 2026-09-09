@@ -7,7 +7,7 @@ import { Avatar } from '@/components/profile/Avatar';
 import { ProfileDialog } from '@/components/profile/ProfileDialog';
 import { NewChatDialog } from '@/components/chats/NewChatDialog';
 import { ChatList } from '@/components/chats/ChatList';
-import { ComposeIcon, LogoIcon, SearchIcon, SettingsIcon } from '@/components/icons';
+import { ArchiveIcon, CallsIcon, ChatsIcon, ComposeIcon, ContactsIcon, LogoIcon, SearchIcon, SettingsIcon } from '@/components/icons';
 import { useVortexStore } from '@/lib/store/useVortexStore';
 
 export function Sidebar(): React.JSX.Element {
@@ -43,6 +43,12 @@ export function Sidebar(): React.JSX.Element {
           <ComposeIcon size={18} />
         </button>
       </header>
+      <nav aria-label="Folders" className="flex items-center gap-1 border-b border-gotoap-line px-2 pb-1.5">
+        <span className="flex items-center gap-1.5 rounded-lg bg-gotoap-hover px-2.5 py-1.5 text-xs font-medium text-gotoap-ink"><ChatsIcon size={14} /> All chats</span>
+        <span title="Coming soon" className="flex cursor-not-allowed items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs text-gotoap-ink-muted opacity-60"><ContactsIcon size={14} /> Contacts</span>
+        <span title="Coming soon" className="flex cursor-not-allowed items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs text-gotoap-ink-muted opacity-60"><CallsIcon size={14} /> Calls</span>
+        <span title="Coming soon" className="hidden items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs text-gotoap-ink-muted opacity-60 sm:flex"><ArchiveIcon size={14} /> Archive</span>
+      </nav>
       <ChatList query={query} />
       <footer className="border-t border-gotoap-line px-2 py-1.5">
         <Link href="/settings" className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-gotoap-ink-muted transition hover:bg-gotoap-hover hover:text-gotoap-ink">

@@ -1,10 +1,48 @@
 /** Trystero setup over WebTorrent trackers. */
 import type {
-  DataPayload,
   JoinRoomConfig,
   MessageAction,
   Room,
 } from '@trystero-p2p/core';
+
+export type MessageKind = 'text' | 'sticker' | 'voice' | 'file';
+
+export type PeerProfilePayload = {
+  did: string;
+  displayName?: string;
+  bio?: string;
+  colorId?: string;
+};
+
+/** Signaling payload for peer-to-peer audio/video calls. JSON-safe by design. */
+export type JsonIceCandidate = { candidate: string; sdpMid?: string | null; sdpMLineIndex?: number | null; usernameFragment?: string | null };
+
+export type CallSignal =
+  | { type: 'offer'; sdp: string; video: boolean }
+  | { type: 'answer'; sdp: string }
+  | { type: 'ice'; candidate: JsonIceCandidate }
+  | { type: 'hangup' };
+
+/** A single unit sent over the P2P wire: chat message, typing ping, receipt, or profile. */
+export type ChatWireMessage = {
+  id: string;
+  senderDid: string;
+  body: string;
+  timestamp: number;
+  signature: string;
+  encrypted: boolean;
+  kind?: MessageKind;
+  media?: { name: string; mime: string; size: number; dataUri: string; durationMs?: number };
+  replyToId?: string;
+  forwarded?: boolean;
+  editOf?: string;
+  editedAt?: number;
+  deleted?: boolean;
+  typing?: boolean;
+  receiptIds?: string[];
+  profile?: PeerProfilePayload;
+  call?: CallSignal;
+};
 
 export interface GotoapRoomHandle {
   room: Room;
@@ -12,16 +50,9 @@ export interface GotoapRoomHandle {
   leave: () => Promise<void>;
 }
 
-export type ChatWireMessage = DataPayload & {
-  id: string;
-  senderDid: string;
-  body: string;
-  timestamp: number;
-  signature: string;
-  encrypted: boolean;
-};
-
 const DEFAULT_TRACKER_URLS = ['wss://tracker.webtorrent.dev', 'wss://tracker.openwebtorrent.com', 'wss://tracker.btorrent.xyz'];
+
+export const SAVED_MESSAGES_ROOM = 'saved-messages';
 
 export function getAppId(): string {
   const configured = process.env.NEXT_PUBLIC_APP_ID;

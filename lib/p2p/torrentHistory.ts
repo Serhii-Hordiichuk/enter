@@ -82,3 +82,29 @@ export class TorrentHistoryManager {
 }
 
 export const torrentHistory = new TorrentHistoryManager();
+
+/** Patches a single wire message inside the local history of a room. */
+export function patchLocalHistory(roomId: string, messageId: string, patch: Partial<ChatWireMessage>): void {
+  try {
+    const messages = loadLocalHistory(roomId);
+    let changed = false;
+    const next = messages.map((wire) => {
+      if (wire.id !== messageId) return wire;
+      changed = true;
+      return { ...wire, ...patch };
+    });
+    if (changed) saveLocalHistory(roomId, next);
+  } catch (error) {
+    console.error('Failed to patch the local history:', error);
+  }
+}
+
+/** Reads the local history of a room and returns it with a fresh magnet when reseeded. */
+export function exportHistoryJson(roomId: string): string {
+  try {
+    return JSON.stringify({ roomId, exportedAt: new Date().toISOString(), messages: loadLocalHistory(roomId) }, null, 2);
+  } catch (error) {
+    console.error('Failed to export the history:', error);
+    return '{"messages":[]}';
+  }
+}
