@@ -1,5 +1,5 @@
 /* Gotoap service worker: offline app shell and static asset caching. */
-const CACHE_NAME = 'gotoap-shell-v1';
+const CACHE_NAME = 'gotoap-shell-v2';
 const APP_SHELL = ['/', '/manifest.webmanifest', '/icon.svg', '/icon-maskable.svg'];
 
 self.addEventListener('install', (event) => {
