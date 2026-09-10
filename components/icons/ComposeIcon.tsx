@@ -1,28 +1,10 @@
 import { IconBase } from './IconBase';
 
-interface IconProps {
-  size?: number;
-  className?: string;
-}
-
-/** Custom compose (new chat) icon: a pencil over a square. */
-export function ComposeIcon({ size = 22, className }: IconProps): React.JSX.Element {
+/** Compose (new message) icon. */
+export function ComposeIcon(props: React.ComponentProps<typeof IconBase>): React.JSX.Element {
   return (
-    <IconBase size={size} className={className}>
-      <path
-        d="M11 5H6a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-5"
-        stroke="currentColor"
-        strokeWidth={1.8}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M17.2 3.6a2 2 0 0 1 2.9 2.9L12.6 14l-3.9 1 1-3.9 7.5-7.5Z"
-        stroke="currentColor"
-        strokeWidth={1.8}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+    <IconBase {...props}>
+      <path d="M12 2C6.48 2 2 6.48 2 12v12c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V12c0-5.52-4.48-10-10-10zm7 13h-4v-2h4V15zm0-4h-4V9h4v2z" fill="currentColor" />
     </IconBase>
   );
 }
