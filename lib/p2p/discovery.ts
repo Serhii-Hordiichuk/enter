@@ -263,8 +263,11 @@ class DirectoryService {
 }
 
 function matchesQuery(entry: DirectoryEntry, q: string): boolean {
+  const query = q.trim().toLowerCase().replace(/^@/, '');
+  if (!query) return false;
   const haystack = [entry.name, entry.username, entry.did, entry.bio].filter(Boolean).join(' ').toLowerCase();
-  return haystack.includes(q);
+  // Підтримка пошуку за частиною ніка / DID / імені: кожне слово запиту має зустрічатись
+  return query.split(/\s+/).every((word) => haystack.includes(word));
 }
 
 export const directory = new DirectoryService();

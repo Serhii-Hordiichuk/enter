@@ -29,9 +29,9 @@ export function ChatList({ query, folder = 'all' }: ChatListProps): React.JSX.El
         <span className="inline-flex h-14 w-14 items-center justify-center rounded-full bg-gotoap-hover text-gotoap-ink-muted">
           <ChatsIcon size={26} />
         </span>
-        <p className="text-sm font-medium text-gotoap-ink">{query.trim() ? 'Nothing found' : 'No chats yet'}</p>
+        <p className="text-sm font-medium text-gotoap-ink">{query.trim() ? 'Нічого не знайдено' : 'Поки порожньо'}</p>
         <p className="text-xs text-gotoap-ink-muted">
-          {query.trim() ? 'Try a different search query.' : 'Start a chat by sharing your DID or a room name with a peer.'}
+          {query.trim() ? 'Спробуй @нік, частину DID або інше слово.' : 'Введи @нік друга в пошуку вище і тисни «Написати» — це 2 кліки.'}
         </p>
       </div>
     );

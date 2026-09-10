@@ -75,6 +75,23 @@ export function normalizeRoomId(roomId: string): string {
   return normalized;
 }
 
+/** Гнучкий ввід користувача: @nick, did:peer:..., або спільна кімната. */
+export function parseChatTarget(input: string): { kind: 'did' | 'room'; value: string; peerDid: string | null } {
+  const raw = input.trim();
+  if (!raw) throw new Error('Enter @username, DID, or room name');
+  const withoutAt = raw.startsWith('@') ? raw.slice(1) : raw;
+  if (withoutAt.toLowerCase().startsWith('did:')) {
+    const did = withoutAt.trim();
+    if (did.length < 10) throw new Error('Invalid DID');
+    return { kind: 'did', value: did, peerDid: did };
+  }
+  if (/^[a-zA-Z0-9_.-]{3,64}$/.test(withoutAt) && raw.startsWith('@')) {
+    // @nick без двокрапок — це нікнейм для глобального пошуку, а не кімната
+    return { kind: 'did', value: withoutAt.toLowerCase(), peerDid: withoutAt.toLowerCase() };
+  }
+  return { kind: 'room', value: normalizeRoomId(withoutAt), peerDid: null };
+}
+
 export async function createRoom(roomId: string): Promise<GotoapRoomHandle> {
   try {
     if (typeof window === 'undefined') throw new Error('Trystero is only available in the browser');

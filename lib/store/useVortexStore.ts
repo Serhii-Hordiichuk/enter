@@ -290,12 +290,13 @@ export const useVortexStore = create<VortexState>()(
       startRoom: (roomId, peerDid = null) => {
         const normalized = roomId.trim();
         if (!normalized) throw new Error('Empty room identifier');
+        const resolvedPeer = peerDid ?? (normalized.startsWith('did:') ? normalized : null);
         set((state) => {
           const existing = state.activeRooms.find((room) => room.id === normalized);
           if (existing) {
-            existing.peerDid = peerDid ?? existing.peerDid;
+            existing.peerDid = resolvedPeer ?? existing.peerDid;
           } else {
-            state.activeRooms.unshift({ id: normalized, peerDid, title: '', pinned: false, muted: false, archived: false, createdAt: Date.now(), lastMessageAt: Date.now(), isGroup: false, isBot: false });
+            state.activeRooms.unshift({ id: normalized, peerDid: resolvedPeer, title: '', pinned: false, muted: false, archived: false, createdAt: Date.now(), lastMessageAt: Date.now(), isGroup: false, isBot: false });
           }
           sortRooms(state.activeRooms);
           if (!state.messages[normalized]) state.messages[normalized] = [];
