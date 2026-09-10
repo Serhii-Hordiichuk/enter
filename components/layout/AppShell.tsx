@@ -24,8 +24,22 @@ export function AppShell({ children }: AppShellProps): React.JSX.Element {
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
-    try { ensureDid(); } catch { /* No DID yet: the onboarding screen will be shown. */ }
-    setChecked(true);
+    let isMounted = true;
+    const checkDid = async () => {
+      try {
+        await ensureDid();
+        if (isMounted) setChecked(true);
+      } catch (error) {
+        console.error('Failed to initialize DID:', error);
+        // Even if DID initialization fails, we still want to render the UI
+        // so the user can see any error messages or try again
+        if (isMounted) setChecked(true);
+      }
+    };
+    checkDid();
+    return () => {
+      isMounted = false;
+    };
   }, [ensureDid]);
 
   useEffect(() => {

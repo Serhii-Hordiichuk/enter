@@ -95,7 +95,6 @@ export function MessageInput(props: MessageInputProps): React.JSX.Element {
   const pickFile = (kind: 'any' | 'image'): void => {
     const input = kind === 'image' ? imageInputRef.current : fileInputRef.current;
     if (input) input.click();
-    setAttachOpen(false);
   };
 
   const handleFile = async (event: ChangeEvent<HTMLInputElement>): Promise<void> => {

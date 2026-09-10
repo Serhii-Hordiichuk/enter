@@ -6,9 +6,9 @@ import { usePathname } from 'next/navigation';
 import { Avatar } from '@/components/profile/Avatar';
 import { BellOffIcon, BotIcon, GroupIcon, ImageIcon, PinIcon } from '@/components/icons';
 import { SAVED_MESSAGES_ROOM } from '@/lib/p2p/trysteroSetup';
-import { useVortexStore, type ActiveRoom } from '@/lib/store/useVortexStore';
+import { useVortexStore, type ActiveRoom, type VortexMessage } from '@/lib/store/useVortexStore';
 
-const EMPTY: [] = [];
+const EMPTY: VortexMessage[] = [];
 
 interface ChatListItemProps {
   room: ActiveRoom;

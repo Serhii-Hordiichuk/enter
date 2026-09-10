@@ -161,7 +161,9 @@ class CallManager {
   async hangup(): Promise<void> {
     const { roomId } = this.state;
     this.clearRingTimeout();
-    if (roomId && this.state.status !== 'incoming') {
+    // Only send hangup signal for outgoing or active calls
+    // Don't send for incoming calls (just tear down) or idle state
+    if (roomId && (this.state.status === 'outgoing' || this.state.status === 'active')) {
       await sendCallSignal(roomId, { type: 'hangup' }).catch((error) => console.error('Failed to send the hangup signal:', error));
     }
     this.teardown();
@@ -246,9 +248,11 @@ class CallManager {
       if (this.screenStream) {
         const cameraTrack = this.state.localStream?.getVideoTracks()[0] ?? null;
         if (sender && cameraTrack) await sender.replaceTrack(cameraTrack);
-        for (const track of this.screenStream.getTracks()) track.stop();
-        this.screenStream = null;
-        return false;
+        if (this.screenStream) {
+          for (const track of this.screenStream.getTracks()) track.stop();
+          this.screenStream = null;
+          return false;
+        }
       }
       const display = await navigator.mediaDevices.getDisplayMedia({ video: true });
       const track = display.getVideoTracks()[0];

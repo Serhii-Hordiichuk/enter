@@ -29,7 +29,6 @@ interface SidebarProps {
 export function Sidebar({ onOpenSharedMedia }: SidebarProps): React.JSX.Element {
   const router = useRouter();
   const profile = useVortexStore((state) => state.profile);
-  const did = useVortexStore((state) => state.currentDid?.did ?? '');
   const startRoom = useVortexStore((state) => state.startRoom);
   const groupCount = useVortexStore((state) => state.groups.length);
   const botCount = useVortexStore((state) => state.bots.length);
@@ -268,7 +267,7 @@ export function Sidebar({ onOpenSharedMedia }: SidebarProps): React.JSX.Element 
             onClick={() => setProfileOpen(true)}
             className="flex flex-1 items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-gotoap-ink-muted transition hover:bg-gotoap-hover hover:text-gotoap-ink"
           >
-            <Avatar seed={did} name={profile.displayName} colorId={profile.avatarColor} size={28} online />
+            <Avatar seed={profile.displayName} name={profile.displayName} colorId={profile.avatarColor} size={28} online />
             <span className="truncate">{profile.displayName || 'My Profile'}</span>
           </button>
         </footer>

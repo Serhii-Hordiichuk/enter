@@ -133,7 +133,10 @@ export default function ChatPage(): React.JSX.Element {
   useEffect(() => { useVortexStore.getState().markRoomOpened(roomId); }, [roomId]);
 
   const handleSendText = useCallback((text: string, replyToId: string | null = null) => {
-    void sendChatMessage(roomId, text, { replyToId }).catch((error) => console.error('Send failed:', error));
+    void sendChatMessage(roomId, text, { replyToId }).then(() => {
+      // Clear replyTo after sending to prevent accidental replies
+      setReplyTo(null);
+    }).catch((error) => console.error('Send failed:', error));
   }, [roomId]);
 
   const handleSendSticker = useCallback((stickerId: string) => {
@@ -152,7 +155,10 @@ export default function ChatPage(): React.JSX.Element {
 
   const handleEditSave = useCallback((messageId: string, body: string) => {
     setEditing(null);
-    void editSentMessage(roomId, messageId, body).catch((error) => console.error('Edit failed:', error));
+    void editSentMessage(roomId, messageId, body).then(() => {
+      // Clear replyTo after editing to prevent accidental replies
+      setReplyTo(null);
+    }).catch((error) => console.error('Edit failed:', error));
   }, [roomId]);
 
   const handleTyping = useCallback((): void => { void sendTypingIndicator(roomId); }, [roomId]);
@@ -164,12 +170,22 @@ export default function ChatPage(): React.JSX.Element {
 
   const handleMessageAction = useCallback((action: MessageActionKind, message: VortexMessage): void => {
     const messageId = message.id;
-    if (action === 'reply') setReplyTo(messageId);
-    if (action === 'edit') setEditing(messageId);
-    if (action === 'pin') togglePinnedMessage(roomId, messageId);
-    if (action === 'delete') void deleteSentMessage(roomId, messageId).catch((error) => console.error('Delete failed:', error));
-    if (action === 'forward') setForwarding(messageId);
-    if (action === 'copy') void navigator.clipboard.writeText(message.body).catch((error) => console.error('Copy failed:', error));
+    if (action === 'reply') {
+      setReplyTo(messageId);
+    } else if (action === 'edit') {
+      setEditing(messageId);
+    } else if (action === 'pin') {
+      togglePinnedMessage(roomId, messageId);
+    } else if (action === 'delete') {
+      void deleteSentMessage(roomId, messageId).catch((error) => console.error('Delete failed:', error));
+    } else if (action === 'forward') {
+      setForwarding(messageId);
+    } else if (action === 'copy') {
+      void navigator.clipboard.writeText(message.body).catch((error) => console.error('Copy failed:', error));
+    } else if (action === 'react') {
+      // React action is handled by the message bubble's onReaction callback
+      // This case is for completeness but doesn't need to do anything here
+    }
   }, [roomId, togglePinnedMessage]);
 
   const pinnedMessage = pinnedMessageId ? messages.find((message) => message.id === pinnedMessageId) ?? null : null;
