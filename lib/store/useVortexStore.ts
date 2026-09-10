@@ -106,6 +106,8 @@ export interface UserProfile {
   twoFactorEnabled: boolean;
   recoveryEmail: string;
   activeSessions: SessionInfo[];
+  appName: string;
+  appLogo: string | null;
 }
 export interface SessionInfo {
   id: string;
@@ -147,6 +149,8 @@ export const DEFAULT_PROFILE: UserProfile = {
   isPremium: false,
   lastSeen: Date.now(),
   online: true,
+  appName: 'Gotoap Messenger',
+  appLogo: null,
   privacy: {
     lastSeen: 'everyone',
     profilePhoto: 'everyone',
@@ -200,6 +204,8 @@ interface VortexState {
   apiKey: string | null;
   theme: ThemeMode;
   setTheme: (theme: ThemeMode) => void;
+  setAppName: (name: string) => void;
+  setAppLogo: (logo: string | null) => void;
   ensureDid: () => DIDKeyPair;
   updateProfile: (patch: Partial<UserProfile>) => void;
   setApiKey: (apiKey: string | null) => void;
@@ -290,6 +296,8 @@ export const useVortexStore = create<VortexState>()(
       apiKey: null,
       theme: 'dark',
       setTheme: (theme) => set((state) => { state.theme = theme; }),
+      setAppName: (name) => set((state) => { state.profile.appName = name.slice(0, 40); }),
+      setAppLogo: (logo) => set((state) => { state.profile.appLogo = logo; }),
       ensureDid: () => {
         const stored = getStoredDIDKeyPair();
         if (stored) {

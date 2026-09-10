@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Switch } from '@/components/ui/Switch';
 import { useVortexStore } from '@/lib/store/useVortexStore';
+import { t } from '@/lib/i18n';
 import {
   CameraIcon, ChevronRightIcon, ClockIcon, ExportIcon, KeyIcon, LockIcon, PaletteIcon, PhoneIcon, ShieldIcon, TrashIcon, UserIcon,
 } from '@/components/icons';
@@ -60,7 +61,7 @@ export function ProfileSettings({ onBack }: { onBack: () => void }): React.JSX.E
       <div className="flex h-full flex-col">
         <header className="flex h-14 shrink-0 items-center gap-2 border-b border-gotoap-line bg-gotoap-panel px-3">
           <button type="button" onClick={() => setSection('main')} className="inline-flex h-9 w-9 items-center justify-center rounded-full text-gotoap-ink-muted hover:bg-gotoap-hover hover:text-gotoap-ink">←</button>
-          <h1 className="text-base font-semibold text-gotoap-ink">{section === 'personal' ? 'Personal Info' : section === 'privacy' ? 'Privacy & Security' : section === 'sessions' ? 'Active Sessions' : section === '2fa' ? 'Two-Step Verification' : section === 'data' ? 'Data & Storage' : 'Delete Account'}</h1>
+          <h1 className="text-base font-semibold text-gotoap-ink">{section === 'personal' ? t('profile.personalInfo') : section === 'privacy' ? t('profile.privacySecurity') : section === 'sessions' ? t('profile.activeSessions') : section === '2fa' ? t('profile.twoFactor') : section === 'data' ? t('profile.dataStorage') : t('profile.deleteAccount')}</h1>
         </header>
         <div className="gotoap-scroll flex-1 overflow-y-auto p-4">
           {section === 'personal' ? (
@@ -83,12 +84,12 @@ export function ProfileSettings({ onBack }: { onBack: () => void }): React.JSX.E
           ) : section === 'privacy' ? (
             <div className="flex flex-col gap-2">
               <h2 className="mb-2 text-sm font-medium text-gotoap-ink-muted">Who can see my information</h2>
-              <PrivacyOption icon={<ClockIcon size={16} />} label="Last Seen & Online" value={profile.privacy.lastSeen} onChange={(v) => updatePrivacy('lastSeen', v)} />
-              <PrivacyOption icon={<CameraIcon size={16} />} label="Profile Photo" value={profile.privacy.profilePhoto} onChange={(v) => updatePrivacy('profilePhoto', v)} />
-              <PrivacyOption icon={<PhoneIcon size={16} />} label="Phone Number" value={profile.privacy.phoneNumber} onChange={(v) => updatePrivacy('phoneNumber', v)} />
-              <PrivacyOption icon={<UserIcon size={16} />} label="Forwarded Messages" value={profile.privacy.forwardedMessages} onChange={(v) => updatePrivacy('forwardedMessages', v)} />
-              <PrivacyOption icon={<PhoneIcon size={16} />} label="Calls" value={profile.privacy.calls} onChange={(v) => updatePrivacy('calls', v)} />
-              <PrivacyOption icon={<ChevronRightIcon size={16} />} label="Groups & Channels" value={profile.privacy.groups} onChange={(v) => updatePrivacy('groups', v)} />
+              <PrivacyOption icon={<ClockIcon size={16} />} label={t('privacy.lastSeen')} value={profile.privacy.lastSeen} onChange={(v) => updatePrivacy('lastSeen', v)} />
+              <PrivacyOption icon={<CameraIcon size={16} />} label={t('privacy.profilePhoto')} value={profile.privacy.profilePhoto} onChange={(v) => updatePrivacy('profilePhoto', v)} />
+              <PrivacyOption icon={<PhoneIcon size={16} />} label={t('privacy.phoneNumber')} value={profile.privacy.phoneNumber} onChange={(v) => updatePrivacy('phoneNumber', v)} />
+              <PrivacyOption icon={<UserIcon size={16} />} label={t('privacy.forwardedMessages')} value={profile.privacy.forwardedMessages} onChange={(v) => updatePrivacy('forwardedMessages', v)} />
+              <PrivacyOption icon={<PhoneIcon size={16} />} label={t('privacy.calls')} value={profile.privacy.calls} onChange={(v) => updatePrivacy('calls', v)} />
+              <PrivacyOption icon={<ChevronRightIcon size={16} />} label={t('privacy.groups')} value={profile.privacy.groups} onChange={(v) => updatePrivacy('groups', v)} />
             </div>
           ) : section === 'sessions' ? (
             <div className="flex flex-col gap-2">
@@ -149,7 +150,7 @@ export function ProfileSettings({ onBack }: { onBack: () => void }): React.JSX.E
         <div className="flex flex-col items-center gap-3 px-4 py-6">
           <div className="relative">
             <Avatar seed={currentDid?.did ?? 'gotoap'} name={displayName} size={96} online />
-            <button type="button" onClick={() => setColorPickerOpen((v) => !v)} className="absolute -bottom-1 -right-1 inline-flex h-8 w-8 items-center justify-center rounded-full bg-gotoap-accent text-white shadow-lg" aria-label="Change avatar color"><PaletteIcon size={16} /></button>
+            <button type="button" onClick={() => setColorPickerOpen((v) => !v)} className="absolute -bottom-1 -right-1 inline-flex h-8 w-8 items-center justify-center rounded-full bg-gotoap-accent text-white shadow-lg" aria-label={t('profile.changeColor')}><PaletteIcon size={16} /></button>
           </div>
           {colorPickerOpen ? (
             <div className="flex gap-2 rounded-xl border border-gotoap-line bg-gotoap-panel p-2 shadow-lg">
@@ -160,12 +161,12 @@ export function ProfileSettings({ onBack }: { onBack: () => void }): React.JSX.E
           ) : null}
         </div>
         <div className="flex flex-col gap-1 px-4 pb-6">
-          <SettingsRow icon={<UserIcon size={18} />} label="Personal Info" subtitle="Name, username, bio" onClick={() => setSection('personal')} />
-          <SettingsRow icon={<LockIcon size={18} />} label="Privacy & Security" subtitle="Last seen, photo, calls" onClick={() => setSection('privacy')} />
-          <SettingsRow icon={<ShieldIcon size={18} />} label="Active Sessions" subtitle={(profile.activeSessions ? profile.activeSessions.length : 0) + ' devices'} onClick={() => setSection('sessions')} />
-          <SettingsRow icon={<KeyIcon size={18} />} label="Two-Step Verification" subtitle={profile.twoFactorEnabled ? 'Enabled' : 'Disabled'} onClick={() => setSection('2fa')} />
-          <SettingsRow icon={<ExportIcon size={18} />} label="Data & Storage" subtitle="Export, cache" onClick={() => setSection('data')} />
-          <SettingsRow icon={<TrashIcon size={18} />} label="Delete Account" subtitle="Irreversible" onClick={() => setSection('danger')} danger />
+          <SettingsRow icon={<UserIcon size={18} />} label={t('profile.personalInfo')} subtitle="Name, username, bio" onClick={() => setSection('personal')} />
+          <SettingsRow icon={<LockIcon size={18} />} label={t('profile.privacySecurity')} subtitle="Last seen, photo, calls" onClick={() => setSection('privacy')} />
+          <SettingsRow icon={<ShieldIcon size={18} />} label={t('profile.activeSessions')} subtitle={(profile.activeSessions ? profile.activeSessions.length : 0) + ' ' + t('profile.devices')} onClick={() => setSection('sessions')} />
+          <SettingsRow icon={<KeyIcon size={18} />} label={t('profile.twoFactor')} subtitle={profile.twoFactorEnabled ? t('profile.enabled') : t('profile.disabled')} onClick={() => setSection('2fa')} />
+          <SettingsRow icon={<ExportIcon size={18} />} label={t('profile.dataStorage')} subtitle={t('profile.export') + ', ' + t('profile.cache')} onClick={() => setSection('data')} />
+          <SettingsRow icon={<TrashIcon size={18} />} label={t('profile.deleteAccount')} subtitle={t('profile.irreversible')} onClick={() => setSection('danger')} danger />
         </div>
       </div>
     </div>
@@ -193,9 +194,9 @@ function PrivacyOption({ icon, label, value, onChange }: { icon: React.ReactNode
         <span className="text-sm text-gotoap-ink">{label}</span>
       </div>
       <select value={value} onChange={(e) => onChange(e.target.value as 'everyone' | 'contacts' | 'nobody')} className="rounded-lg border border-gotoap-hover bg-gotoap-bg px-2 py-1 text-xs text-gotoap-ink focus:outline-none">
-        <option value="everyone">Everyone</option>
-        <option value="contacts">My Contacts</option>
-        <option value="nobody">Nobody</option>
+        <option value="everyone">{t('privacy.everyone')}</option>
+        <option value="contacts">{t('privacy.contacts')}</option>
+        <option value="nobody">{t('privacy.nobody')}</option>
       </select>
     </div>
   );

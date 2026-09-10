@@ -12,6 +12,7 @@ import { ProfileEditor } from '@/components/profile/ProfileEditor';
 import { BackIcon, BellOffIcon, ClockIcon, CpuIcon, DownloadIcon, KeyIcon, MonitorIcon, MoonIcon, ShieldIcon } from '@/components/icons';
 import { useVortexStore } from '@/lib/store/useVortexStore';
 import { exportAllData } from '@/lib/messaging/messenger';
+import { t } from '@/lib/i18n';
 
 const LANGUAGES: { code: string; label: string }[] = [
   { code: 'en', label: 'English' },
@@ -60,14 +61,14 @@ export default function SettingsPage(): React.JSX.Element {
         <button type="button" onClick={() => router.push('/')} aria-label="Back to chats" className="inline-flex h-9 w-9 items-center justify-center rounded-full text-gotoap-ink-muted transition hover:bg-gotoap-hover hover:text-gotoap-ink">
           <BackIcon size={20} />
         </button>
-        <h1 className="text-base font-semibold text-gotoap-ink">Settings</h1>
+        <h1 className="text-base font-semibold text-gotoap-ink">{t('settings.title')}</h1>
       </header>
 
       <div className="gotoap-scroll flex-1 overflow-y-auto px-4 py-5">
         <div className="mx-auto flex w-full max-w-2xl flex-col gap-5">
 
           <section className="rounded-2xl border border-gotoap-line bg-gotoap-panel p-5">
-            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-gotoap-ink-muted">Profile</h2>
+            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-gotoap-ink-muted">{t('settings.profile')}</h2>
             {did ? (
               <div className="flex flex-col gap-4">
                 <div className="flex items-center gap-4">
@@ -95,7 +96,7 @@ export default function SettingsPage(): React.JSX.Element {
               <div className="mt-3 flex flex-col gap-2">
                 <Input label="Provider API key (optional: the server key is used by default)" value={keyDraft} onChange={(event) => setKeyDraft(event.target.value)} placeholder="sk-..." type="password" />
                 <div className="flex items-center gap-2">
-                  <Button onClick={saveKey} className="px-4">{keySaved ? 'Saved' : 'Save key'}</Button>
+                  <Button onClick={saveKey} className="px-4">{keySaved ? t('settings.keySaved') : t('settings.saveKey')}</Button>
                   {apiKey ? <span className="text-xs text-emerald-400">A key is stored locally</span> : null}
                 </div>
               </div>
@@ -107,22 +108,22 @@ export default function SettingsPage(): React.JSX.Element {
               <ShieldIcon size={15} /> Privacy and security
             </h2>
             <ul className="flex flex-col gap-3 text-sm text-gotoap-ink-muted">
-              <li className="flex items-start gap-2.5"><KeyIcon size={15} className="mt-0.5 shrink-0 text-gotoap-accent" /> Messages are signed with Ed25519 and encrypted with AES-GCM per room.</li>
-              <li className="flex items-start gap-2.5"><ClockIcon size={15} className="mt-0.5 shrink-0 text-gotoap-accent" /> History is stored only in this browser and in the WebTorrent swarm.</li>
-              <li className="flex items-start gap-2.5"><ShieldIcon size={15} className="mt-0.5 shrink-0 text-gotoap-accent" /> The profile is never uploaded: it travels only inside your P2P rooms.</li>
+              <li className="flex items-start gap-2.5"><KeyIcon size={15} className="mt-0.5 shrink-0 text-gotoap-accent" /> {t('settings.privacyHint1')}</li>
+              <li className="flex items-start gap-2.5"><ClockIcon size={15} className="mt-0.5 shrink-0 text-gotoap-accent" /> {t('settings.privacyHint2')}</li>
+              <li className="flex items-start gap-2.5"><ShieldIcon size={15} className="mt-0.5 shrink-0 text-gotoap-accent" /> {t('settings.privacyHint3')}</li>
             </ul>
           </section>
 
           <section className="rounded-2xl border border-gotoap-line bg-gotoap-panel p-5">
-            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-gotoap-ink-muted">Data</h2>
+            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-gotoap-ink-muted">{t('settings.data')}</h2>
             <Button onClick={exportData} variant="secondary" className="w-full">
-              <span className="inline-flex items-center gap-2"><DownloadIcon size={16} /> {exported ? 'Exported' : 'Export all data (JSON)'}</span>
+              <span className="inline-flex items-center gap-2"><DownloadIcon size={16} /> {exported ? t('settings.exported') : t('settings.exportData')}</span>
             </Button>
           </section>
 
           <section className="rounded-2xl border border-gotoap-line bg-gotoap-panel p-5">
             <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-gotoap-ink-muted">
-              <MoonIcon size={15} /> Appearance
+              <MoonIcon size={15} /> {t('settings.appearance')}
             </h2>
             <div className="flex items-center gap-2">
               {([
@@ -141,11 +142,11 @@ export default function SettingsPage(): React.JSX.Element {
                 </button>
               ))}
             </div>
-            <p className="mt-2 text-xs text-gotoap-ink-muted">Dark is the default. Light follows the browser preference in future releases.</p>
+            <p className="mt-2 text-xs text-gotoap-ink-muted">{t('settings.darkDefault')}</p>
           </section>
 
           <section className="rounded-2xl border border-gotoap-line bg-gotoap-panel p-5">
-            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-gotoap-ink-muted">Language</h2>
+            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-gotoap-ink-muted">{t('settings.language')}</h2>
             <select
               value={profile.language}
               onChange={(event) => updateProfile({ language: event.target.value })}
@@ -158,8 +159,8 @@ export default function SettingsPage(): React.JSX.Element {
           </section>
 
           <section className="rounded-2xl border border-gotoap-line bg-gotoap-panel p-5">
-            <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-gotoap-ink-muted">Notifications</h2>
-            <p className="flex items-center gap-2 text-sm text-gotoap-ink-muted"><BellOffIcon size={15} /> Muted chats are marked in the chat list; in-app sound can be toggled per chat menu.</p>
+            <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-gotoap-ink-muted">{t('settings.notifications')}</h2>
+            <p className="flex items-center gap-2 text-sm text-gotoap-ink-muted"><BellOffIcon size={15} /> {t('settings.notificationsHint')}</p>
           </section>
 
         </div>

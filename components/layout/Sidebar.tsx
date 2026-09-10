@@ -12,15 +12,16 @@ import { ArchiveIcon, BotIcon, CallsIcon, ChatsIcon, ContactsIcon, GroupIcon, Me
 import { useVortexStore } from '@/lib/store/useVortexStore';
 import { directory } from '@/lib/p2p/discovery';
 import { SAVED_MESSAGES_ROOM } from '@/lib/p2p/trysteroSetup';
+import { t } from '@/lib/i18n';
 
 type FolderId = 'all' | 'personal' | 'groups' | 'bots' | 'unread';
 
 const FOLDERS: { id: FolderId; label: string }[] = [
-  { id: 'all', label: 'Всі' },
-  { id: 'personal', label: 'Особисті' },
-  { id: 'groups', label: 'Групи' },
-  { id: 'bots', label: 'Боти' },
-  { id: 'unread', label: 'Непрочитані' },
+  { id: 'all', label: t('nav.all') },
+  { id: 'personal', label: t('nav.personal') },
+  { id: 'groups', label: t('nav.groups') },
+  { id: 'bots', label: t('nav.bots') },
+  { id: 'unread', label: t('nav.unread') },
 ];
 
 export function Sidebar(): React.JSX.Element {
@@ -133,7 +134,7 @@ export function Sidebar(): React.JSX.Element {
           </button>
           <div className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-lg bg-gotoap-hover px-3 text-sm">
             <SearchIcon size={16} className="shrink-0 text-gotoap-ink-muted" />
-            <input value={query} onChange={(event) => setQuery(event.target.value)} onFocus={() => setSearchOpen(true)} placeholder="Пошук" aria-label="Пошук" className="min-w-0 flex-1 bg-transparent text-gotoap-ink placeholder:text-gotoap-ink-muted focus:outline-none" />
+            <input value={query} onChange={(event) => setQuery(event.target.value)} onFocus={() => setSearchOpen(true)} placeholder={t('search.placeholder')} aria-label={t('search.placeholder')} className="min-w-0 flex-1 bg-transparent text-gotoap-ink placeholder:text-gotoap-ink-muted focus:outline-none" />
           </div>
         </header>
         <div className="flex shrink-0 gap-1 overflow-x-auto px-3 pb-2 lg:hidden" role="tablist" aria-label="Папки чатів">
@@ -168,20 +169,20 @@ export function Sidebar(): React.JSX.Element {
                 {(profile.displayName || 'G').slice(0, 1).toUpperCase()}
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-[15px] font-semibold text-gotoap-ink">{profile.displayName || 'Мій профіль'}</span>
-                <span className="block truncate text-xs text-gotoap-ink-muted">{profile.username ? '@' + profile.username : 'Переглянути профіль'}</span>
+                <span className="block truncate text-[15px] font-semibold text-gotoap-ink">{profile.displayName || t('nav.myProfile')}</span>
+                <span className="block truncate text-xs text-gotoap-ink-muted">{profile.username ? '@' + profile.username : t('nav.viewProfile')}</span>
               </span>
             </button>
             <nav className="gotoap-scroll flex-1 overflow-y-auto px-2 py-2" aria-label="Розділи">
-              <DrawerItem icon={<GroupIcon size={19} />} label="Нова група" onClick={() => { setDrawerOpen(false); setGroupDialogOpen(true); }} />
-              <DrawerItem icon={<ChatsIcon size={19} />} label="Новий чат" onClick={() => { setDrawerOpen(false); setNewChatOpen(true); }} />
-              <DrawerItem icon={<BotIcon size={19} />} label="Новий бот" onClick={() => go('/create-bot')} />
-              <DrawerItem icon={<SavedIcon size={19} />} label="Збережені" onClick={() => { setDrawerOpen(false); openSaved(); }} />
+              <DrawerItem icon={<GroupIcon size={19} />} label={t('nav.newGroup' )} onClick={() => { setDrawerOpen(false); setGroupDialogOpen(true); }} />
+              <DrawerItem icon={<ChatsIcon size={19} />} label={t('nav.newChat' )} onClick={() => { setDrawerOpen(false); setNewChatOpen(true); }} />
+              <DrawerItem icon={<BotIcon size={19} />} label={t('nav.newBot' )} onClick={() => go('/create-bot')} />
+              <DrawerItem icon={<SavedIcon size={19} />} label={t('nav.saved' )} onClick={() => { setDrawerOpen(false); openSaved(); }} />
               <div className="mx-3 my-2 h-px bg-gotoap-line" />
-              <DrawerItem icon={<ContactsIcon size={19} />} label="Контакти" onClick={() => go('/contacts')} />
-              <DrawerItem icon={<CallsIcon size={19} />} label="Дзвінки" onClick={() => go('/calls')} />
-              <DrawerItem icon={<ArchiveIcon size={19} />} label="Архів" onClick={() => go('/archive')} />
-              <DrawerItem icon={<SettingsIcon size={19} />} label="Налаштування" onClick={() => { setDrawerOpen(false); setSettingsOpen(true); }} />
+              <DrawerItem icon={<ContactsIcon size={19} />} label={t('nav.contacts' )} onClick={() => go('/contacts')} />
+              <DrawerItem icon={<CallsIcon size={19} />} label={t('nav.calls' )} onClick={() => go('/calls')} />
+              <DrawerItem icon={<ArchiveIcon size={19} />} label={t('nav.archive' )} onClick={() => go('/archive')} />
+              <DrawerItem icon={<SettingsIcon size={19} />} label={t('nav.settings' )} onClick={() => { setDrawerOpen(false); setSettingsOpen(true); }} />
             </nav>
           </div>
         </>

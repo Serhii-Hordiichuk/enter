@@ -10,6 +10,7 @@ import { DidBadge } from '@/components/did/DidBadge';
 import { Avatar } from '@/components/profile/Avatar';
 import { useVortexStore } from '@/lib/store/useVortexStore';
 import { parseChatTarget } from '@/lib/p2p/trysteroSetup';
+import { t } from '@/lib/i18n';
 
 interface NewChatDialogProps {
   open: boolean;
@@ -53,7 +54,7 @@ export function NewChatDialog({ open, onClose }: NewChatDialogProps): React.JSX.
     event.preventDefault();
     const target = value.trim();
     if (!target) {
-      setError('Введіть @нік, DID або спільну назву кімнати');
+      setError(t('newchat.error.required'));
       return;
     }
     try {
@@ -65,19 +66,19 @@ export function NewChatDialog({ open, onClose }: NewChatDialogProps): React.JSX.
   };
 
   return (
-    <Dialog open={open} title="Новий чат" onClose={onClose}>
+    <Dialog open={open} title={t('newchat.title')} onClose={onClose}>
       <form onSubmit={submit} className="flex flex-col gap-3">
         <Input
-          label="@нік, DID або кімната"
+          label={t('newchat.label')}
           value={value}
           onChange={(event) => setValue(event.target.value)}
-          placeholder="@nick, did:peer:z... або secret-room-42"
+          placeholder={t('newchat.placeholder')}
           error={error}
           autoFocus
         />
         {suggestions.length > 0 ? (
           <div className="flex flex-col gap-1">
-            <span className="text-xs font-medium uppercase tracking-wide text-gotoap-ink-muted">Знайдені поруч</span>
+            <span className="text-xs font-medium uppercase tracking-wide text-gotoap-ink-muted">{t('newchat.suggestions')}</span>
             {suggestions.map((peer) => (
               <button key={peer.did} type="button" onClick={() => openRoom(peer.did, peer.did)} className="flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left transition hover:bg-gotoap-hover">
                 <Avatar seed={peer.did} name={peer.displayName} size={36} />
@@ -97,14 +98,14 @@ export function NewChatDialog({ open, onClose }: NewChatDialogProps): React.JSX.
           ))}
           <span className="flex-1" />
         </div>
-        <p className="text-xs text-gotoap-ink-muted">1 клік: встав @нік або DID — і чат готовий. Або домовтесь про однакову назву кімнати.</p>
+        <p className="text-xs text-gotoap-ink-muted">{t('newchat.hint')}</p>
         {myDid ? (
           <div className="flex flex-col gap-1.5">
-            <span className="text-xs font-medium uppercase tracking-wide text-gotoap-ink-muted">Мій нік: @{profile.username || 'без ніку'} — поділись ним</span>
+            <span className="text-xs font-medium uppercase tracking-wide text-gotoap-ink-muted">{t('newchat.myNick', { nick: profile.username || 'без нику' })}</span>
             <DidBadge did={myDid} compact />
           </div>
         ) : null}
-        <Button type="submit" className="mt-1 w-full">Почати чат</Button>
+        <Button type="submit" className="mt-1 w-full">{t('newchat.startChat')}</Button>
       </form>
     </Dialog>
   );

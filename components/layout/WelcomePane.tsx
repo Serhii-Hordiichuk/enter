@@ -4,6 +4,8 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { CpuIcon, GlobeIcon, LogoIcon, ShieldIcon } from '@/components/icons';
+import { t } from '@/lib/i18n';
+import { NetworkNodeCard } from '@/components/did/NetworkNodeCard';
 
 interface WelcomePaneProps {
   onStartChat: () => void;
@@ -22,8 +24,8 @@ export function WelcomePane({ onStartChat }: WelcomePaneProps): React.JSX.Elemen
         <LogoIcon size={60} />
       </span>
       <div>
-        <h1 className="text-3xl font-bold text-gotoap-ink">Gotoap Messenger</h1>
-        <p className="mt-2 text-sm text-gotoap-ink-muted">Select a chat to start messaging, or create a new one.</p>
+        <h1 className="text-3xl font-bold text-gotoap-ink">{t('app.name')}</h1>
+        <p className="mt-2 text-sm text-gotoap-ink-muted">{t('chat.empty.title')}</p>
       </div>
       <ul className="flex w-full flex-col gap-2.5 text-left">
         {FEATURES.map((feature) => (
@@ -33,9 +35,10 @@ export function WelcomePane({ onStartChat }: WelcomePaneProps): React.JSX.Elemen
           </li>
         ))}
       </ul>
+      <NetworkNodeCard />
       <div className="flex gap-2">
-        <Button onClick={onStartChat}>Start new chat</Button>
-        <Link href="/settings"><Button variant="secondary">Settings</Button></Link>
+        <Button onClick={onStartChat}>{t('chat.startNew')}</Button>
+        <Link href="/settings"><Button variant="secondary">{t('chat.settings')}</Button></Link>
       </div>
     </div>
   );

@@ -7,6 +7,7 @@ import { StickerPicker } from '@/components/chat/StickerPicker';
 import { Menu } from '@/components/ui/Menu';
 import { CloseIcon, ClipIcon, EditIcon, FileIcon, ImageIcon, MicIcon, ReplyIcon, SendIcon, TrashIcon } from '@/components/icons';
 import type { VortexMessage } from '@/lib/store/useVortexStore';
+import { t } from '@/lib/i18n';
 
 interface MessageInputProps {
   onSendText: (body: string, replyToId: string | null) => void;
@@ -171,8 +172,8 @@ export function MessageInput(props: MessageInputProps): React.JSX.Element {
       {editing ? (
         <div className="mx-auto mb-1.5 flex max-w-3xl items-center gap-2 rounded-xl bg-gotoap-hover/70 px-3 py-1.5">
           <EditIcon size={14} className="shrink-0 text-gotoap-accent" />
-          <span className="min-w-0 flex-1 truncate text-[13px] text-gotoap-ink-muted">Редагування повідомлення</span>
-          <button type="button" onClick={onCancelEdit} aria-label="Cancel editing" className="rounded-full p-1 text-gotoap-ink-muted hover:bg-gotoap-hover hover:text-gotoap-ink">
+          <span className="min-w-0 flex-1 truncate text-[13px] text-gotoap-ink-muted">{t('chat.editing')}</span>
+          <button type="button" onClick={onCancelEdit} aria-label={t('chat.cancelEdit')} className="rounded-full p-1 text-gotoap-ink-muted hover:bg-gotoap-hover hover:text-gotoap-ink">
             <CloseIcon size={14} />
           </button>
         </div>
@@ -180,9 +181,9 @@ export function MessageInput(props: MessageInputProps): React.JSX.Element {
       {recording ? (
         <div className="mx-auto mb-1.5 flex max-w-3xl items-center gap-2 rounded-xl bg-gotoap-hover/70 px-3 py-1.5 text-[13px] text-gotoap-ink">
           <span className="h-2 w-2 animate-pulse rounded-full bg-red-500" />
-          Запис {recordSeconds}с — відпусти для відправки
+          {t('chat.recording', { seconds: recordSeconds })}
           <span className="flex-1" />
-          <button type="button" onClick={() => stopRecording(true)} aria-label="Скасувати запис" className="rounded-full p-1 text-gotoap-ink-muted hover:bg-gotoap-hover hover:text-gotoap-ink">
+          <button type="button" onClick={() => stopRecording(true)} aria-label={t('chat.cancelRecording')} className="rounded-full p-1 text-gotoap-ink-muted hover:bg-gotoap-hover hover:text-gotoap-ink">
             <TrashIcon size={14} />
           </button>
         </div>
@@ -199,15 +200,15 @@ export function MessageInput(props: MessageInputProps): React.JSX.Element {
         <textarea
           ref={textareaRef}
           rows={1}
-          placeholder="Повідомлення"
-          aria-label="Текст повідомлення"
+          placeholder={t('chat.messagePlaceholder')}
+          aria-label={t('chat.message')}
           onChange={notifyTyping}
           onKeyDown={handleKeyDown}
           className="gotoap-textarea max-h-[140px] min-h-[40px] flex-1 rounded-2xl bg-gotoap-hover px-3 py-2.5 text-[15px] text-gotoap-ink placeholder:text-gotoap-ink-muted focus:outline-none"
         />
         <StickerPicker onPick={onSendSticker} />
         <div className="relative">
-          <button type="button" onClick={() => setAttachOpen((value) => !value)} aria-label="Прикріпити файл" aria-expanded={attachOpen} className="inline-flex h-10 w-10 items-center justify-center rounded-full text-gotoap-ink-muted transition hover:bg-gotoap-hover hover:text-gotoap-ink">
+          <button type="button" onClick={() => setAttachOpen((value) => !value)} aria-label={t('chat.attachFile')} aria-expanded={attachOpen} className="inline-flex h-10 w-10 items-center justify-center rounded-full text-gotoap-ink-muted transition hover:bg-gotoap-hover hover:text-gotoap-ink">
             <ClipIcon size={20} />
           </button>
           <Menu
@@ -215,15 +216,15 @@ export function MessageInput(props: MessageInputProps): React.JSX.Element {
             align="right"
             onClose={() => setAttachOpen(false)}
             items={[
-              { label: 'Фото або відео', icon: <ImageIcon size={16} />, onSelect: () => pickFile('image') },
-              { label: 'Документ', icon: <FileIcon size={16} />, onSelect: () => pickFile('any') },
+              { label: t('chat.photoOrVideo'), icon: <ImageIcon size={16} />, onSelect: () => pickFile('image') },
+              { label: t('chat.document'), icon: <FileIcon size={16} />, onSelect: () => pickFile('any') },
             ]}
           />
         </div>
         <button
           type="button"
           onClick={() => { const area = textareaRef.current; if (area && area.value.trim()) submitText(); else void startRecording(); }}
-          aria-label={hasText ? 'Надіслати повідомлення' : 'Голосове повідомлення'}
+          aria-label={hasText ? t('chat.sendMessage') : t('chat.voiceMessage')}
           className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gotoap-accent text-white transition hover:bg-gotoap-accent-hover"
         >
           {hasText ? <SendIcon size={19} /> : <MicIcon size={19} />}

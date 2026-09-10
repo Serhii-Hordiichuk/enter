@@ -4,6 +4,7 @@
 import { ChatsIcon } from '@/components/icons';
 import { ChatListItem } from '@/components/chats/ChatListItem';
 import { useVortexStore } from '@/lib/store/useVortexStore';
+import { t } from '@/lib/i18n';
 
 interface ChatListProps {
   query: string;
@@ -29,9 +30,9 @@ export function ChatList({ query, folder = 'all' }: ChatListProps): React.JSX.El
         <span className="inline-flex h-14 w-14 items-center justify-center rounded-full bg-gotoap-hover text-gotoap-ink-muted">
           <ChatsIcon size={26} />
         </span>
-        <p className="text-sm font-medium text-gotoap-ink">{query.trim() ? 'Нічого не знайдено' : 'Поки порожньо'}</p>
+        <p className="text-sm font-medium text-gotoap-ink">{query.trim() ? t('search.empty.query') : t('search.empty.default')}</p>
         <p className="text-xs text-gotoap-ink-muted">
-          {query.trim() ? 'Спробуй @нік, частину DID або інше слово.' : 'Введи @нік друга в пошуку вище і тисни «Написати» — це 2 кліки.'}
+          {query.trim() ? t('search.empty.hint') : t('search.empty.defaultHint')}
         </p>
       </div>
     );

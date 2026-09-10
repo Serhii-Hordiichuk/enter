@@ -4,6 +4,7 @@
 import { useState } from 'react';
 import { CheckIcon, CopyIcon } from '@/components/icons';
 import { useVortexStore } from '@/lib/store/useVortexStore';
+import { t } from '@/lib/i18n';
 
 export function InviteCard({ compact = false }: { compact?: boolean }): React.JSX.Element {
   const myDid = useVortexStore((state) => state.currentDid?.did ?? '');
@@ -26,10 +27,10 @@ export function InviteCard({ compact = false }: { compact?: boolean }): React.JS
   return (
     <div className="flex flex-col gap-2 rounded-2xl border border-gotoap-line bg-gotoap-panel p-3">
       <p className="text-sm font-semibold text-gotoap-ink">Як зв’язатись зі мною — 10 секунд</p>
-      <p className="text-xs text-gotoap-ink-muted">Друг вводить твій @нік у пошук і тисне «Написати». Все.</p>
+      <p className="text-xs text-gotoap-ink-muted">{t('invite.desc')}</p>
       <div className="flex flex-col gap-1.5">
         <button type="button" disabled={!nickText} onClick={() => nickText && copy(nickText, 'nick')} className="flex w-full items-center gap-2 rounded-xl bg-gotoap-hover px-3 py-2 text-left transition hover:opacity-90 disabled:opacity-50">
-          <span className="min-w-0 flex-1 truncate font-mono text-sm text-gotoap-ink">{nickText || 'Спочатку задай @нік у профілі'}</span>
+          <span className="min-w-0 flex-1 truncate font-mono text-sm text-gotoap-ink">{nickText || t('invite.setNickFirst')}</span>
           {copied === 'nick' ? <CheckIcon size={15} className="shrink-0 text-emerald-400" /> : <CopyIcon size={15} className="shrink-0 text-gotoap-ink-muted" />}
         </button>
         {!compact ? (
@@ -39,7 +40,7 @@ export function InviteCard({ compact = false }: { compact?: boolean }): React.JS
           </button>
         ) : null}
       </div>
-      <p className="truncate text-xs text-gotoap-ink-faint">{displayName ? displayName + ' · ' : ''}DID — запасний варіант, якщо ніку нема.</p>
+      <p className="truncate text-xs text-gotoap-ink-faint">{displayName ? displayName + ' · ' : ''}{t('invite.didBackup')}</p>
     </div>
   );
 }
