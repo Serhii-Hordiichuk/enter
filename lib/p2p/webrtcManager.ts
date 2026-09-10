@@ -3,12 +3,15 @@ import type { ChatWireMessage, GotoapRoomHandle } from './trysteroSetup';
 import { createRoom } from './trysteroSetup';
 
 export type PeerEvent = { type: 'join'; peerId: string } | { type: 'leave'; peerId: string };
+export type ConnectionStatus = 'idle' | 'connecting' | 'connected' | 'alone';
 export type RemoteMessageHandler = (message: ChatWireMessage, peerId: string) => void;
 export type PeerEventHandler = (event: PeerEvent) => void;
 export type RemoteStreamHandler = (stream: MediaStream, peerId: string) => void;
 
 export class WebrtcManager {
   private handles = new Map<string, GotoapRoomHandle>();
+  private statusHandlers = new Map<string, Set<(status: ConnectionStatus) => void>>();
+  private roomStatus = new Map<string, ConnectionStatus>();
   private messageHandlers = new Map<string, Set<RemoteMessageHandler>>();
   private peerHandlers = new Map<string, Set<PeerEventHandler>>();
   private streamHandlers = new Map<string, RemoteStreamHandler>();
@@ -30,8 +33,11 @@ export class WebrtcManager {
         (handle.messageAction as unknown as { on: (event: string, cb: typeof dispatch) => void }).on?.('message', dispatch);
       } catch { /* ignore */ }
       handle.messageAction.onMessage = dispatch;
-      handle.room.onPeerJoin = (peerId) => this.emitPeer(roomId, { type: 'join', peerId });
-      handle.room.onPeerLeave = (peerId) => this.emitPeer(roomId, { type: 'leave', peerId });
+      this.setRoomStatus(roomId, 'connecting');
+      handle.room.onPeerJoin = (peerId) => { this.emitPeer(roomId, { type: 'join', peerId }); this.refreshStatus(roomId); };
+      handle.room.onPeerLeave = (peerId) => { this.emitPeer(roomId, { type: 'leave', peerId }); this.refreshStatus(roomId); };
+      // Початковий статус після join: якщо піри вже є — connected, інакше alone.
+      window.setTimeout(() => this.refreshStatus(roomId), 500);
       handle.room.onPeerStream = (stream, peerId) => {
         const handler = this.streamHandlers.get(roomId);
         if (handler) {
@@ -51,6 +57,38 @@ export class WebrtcManager {
     handlers.add(handler);
     this.messageHandlers.set(roomId, handlers);
     return () => { handlers.delete(handler); };
+  }
+
+  /** P0: підписка на статус з’єднання кімнати (для шапки Telegram). */
+  onStatus(roomId: string, handler: (status: ConnectionStatus) => void): () => void {
+    const handlers = this.statusHandlers.get(roomId) ?? new Set<(status: ConnectionStatus) => void>();
+    handlers.add(handler);
+    this.statusHandlers.set(roomId, handlers);
+    handler(this.roomStatus.get(roomId) ?? 'idle');
+    return () => { handlers.delete(handler); };
+  }
+
+  getStatus(roomId: string): ConnectionStatus {
+    return this.roomStatus.get(roomId) ?? 'idle';
+  }
+
+  /** P0: кількість живих пірів (без повторного join). */
+  peerCount(roomId: string): number {
+    const handle = this.handles.get(roomId);
+    if (!handle) return 0;
+    try { return Object.keys(handle.room.getPeers()).length; } catch { return 0; }
+  }
+
+  private setRoomStatus(roomId: string, status: ConnectionStatus): void {
+    this.roomStatus.set(roomId, status);
+    for (const handler of this.statusHandlers.get(roomId) ?? []) {
+      try { handler(status); } catch (error) { console.error('P2P status handler error:', error); }
+    }
+  }
+
+  private refreshStatus(roomId: string): void {
+    const count = this.peerCount(roomId);
+    this.setRoomStatus(roomId, count > 0 ? 'connected' : 'alone');
   }
 
   onPeerEvent(roomId: string, handler: PeerEventHandler): () => void {
@@ -100,6 +138,8 @@ export class WebrtcManager {
   }
 
   async leave(roomId: string): Promise<void> {
+    this.roomStatus.delete(roomId);
+    this.statusHandlers.delete(roomId);
     const handle = this.handles.get(roomId);
     this.handles.delete(roomId);
     this.messageHandlers.delete(roomId);

@@ -20,7 +20,7 @@ import { webrtcManager } from '@/lib/p2p/webrtcManager';
 import { getStoredDIDKeyPair } from '@/lib/did/keyGenerator';
 import { playMessageChime, requestNotificationPermission, showIncomingMessageNotification } from '@/lib/notifications';
 import {
-  broadcastProfile, deleteSentMessage, editSentMessage, forwardMessage, sendChatMessage,
+  broadcastProfile, deleteSentMessage, editSentMessage, flushOutbox, forwardMessage, sendChatMessage,
   sendReadReceipts, sendReaction, sendTypingIndicator,
 } from '@/lib/messaging/messenger';
 
@@ -50,6 +50,8 @@ export default function ChatPage(): React.JSX.Element {
   const [sharedMediaRoomId, setSharedMediaRoomId] = useState<string | null>(null);
   const [pinnedJumpId, setPinnedMessageJump] = useState<string | null>(null);
   const [historyLoaded, setHistoryLoaded] = useState(false);
+  const [connStatus, setConnStatus] = useState<'idle' | 'connecting' | 'connected' | 'alone'>('idle');
+  const outboxCount = useVortexStore((state) => state.outbox.filter((item) => item.roomId === roomId).length);
   const typingTimers = useRef(new Map<string, number>());
 
   const room = rooms.find((item) => item.id === roomId) ?? null;
@@ -98,8 +100,19 @@ export default function ChatPage(): React.JSX.Element {
           const me = useVortexStore.getState().profile;
           void broadcastProfile(roomId, { did: myDid, displayName: me.displayName || undefined, username: me.username || undefined, bio: me.bio || undefined, colorId: me.avatarColor });
         } catch { /* ignore */ }
+        // P0: пір з’явився — дослати чергу офлайн-повідомлень.
+        void flushOutbox(roomId).catch((error) => console.error('Outbox flush on join failed:', error));
       }
     });
+    const offStatus = webrtcManager.onStatus(roomId, (status) => {
+      setConnStatus(status);
+      if (status === 'connected') void flushOutbox(roomId).catch((error) => console.error('Outbox flush on reconnect failed:', error));
+    });
+    // Періодичний retry черги, поки кімната відкрита (на випадок пропущеного join-івента).
+    const retryTimer = window.setInterval(() => {
+      void flushOutbox(roomId).catch((error) => console.error('Outbox periodic flush failed:', error));
+    }, 10000);
+
     const offMessage = webrtcManager.onMessage(roomId, async (payload, peerId) => {
       try {
         if (payload.typing) {
@@ -133,7 +146,12 @@ export default function ChatPage(): React.JSX.Element {
         console.error('Failed to handle an incoming message', error);
       }
     });
-    return () => { offPeer(); offMessage(); };
+    return () => {
+      offPeer();
+      offStatus();
+      offMessage();
+      window.clearInterval(retryTimer);
+    };
   }, [roomId, myDid, peerName, room?.muted, setPeers]);
 
   useEffect(() => { useVortexStore.getState().markRoomOpened(roomId); }, [roomId]);
@@ -212,6 +230,13 @@ export default function ChatPage(): React.JSX.Element {
           onLeave={() => { deleteRoom(roomId); void webrtcManager.leave(roomId); router.push('/'); }}
           onOpenProfile={() => setProfilePanelOpen(true)}
         />
+        {outboxCount > 0 ? (
+          <p className={'flex items-center gap-2 border-b border-gotoap-line px-3 py-1.5 text-xs sm:px-4 ' + (connStatus === 'connected' ? 'bg-gotoap-panel text-gotoap-ink-faint' : 'bg-gotoap-panel text-gotoap-accent-muted')}>
+            {connStatus === 'connected'
+              ? `Надсилаю повідомлення, що не дійшли (${outboxCount})...`
+              : `Немає з’єднання — ${outboxCount} повідомлень надішлуться, щойно пристрій з’явиться в мережі`}
+          </p>
+        ) : null}
         {pinnedMessage ? (
           <button
             type="button"

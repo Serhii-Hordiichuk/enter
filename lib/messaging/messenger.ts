@@ -38,11 +38,40 @@ async function buildWire(roomId: string, plainBody: string, options: SendOptions
   };
 }
 
+/** P0: надійна відправка — якщо піра нема в кімнаті, wire лягає в outbox і дослється при peer-join. */
+export async function flushOutbox(roomId: string): Promise<number> {
+  const store = useVortexStore.getState();
+  const due = store.dueOutbox(roomId, Date.now());
+  let sent = 0;
+  for (const item of due) {
+    try {
+      await webrtcManager.send(roomId, item.wire);
+      store.dequeueOutbox(roomId, item.wire.id);
+      sent += 1;
+    } catch (error) {
+      console.error('Outbox flush failed:', error);
+      const backoff = Math.min(60000, 3000 * 2 ** Math.min(item.attempts, 4));
+      store.touchOutboxRetry(roomId, item.wire.id, Date.now() + backoff);
+    }
+  }
+  return sent;
+}
+
 /** Sends a chat message and stores it locally as an own message. */
 export async function sendChatMessage(roomId: string, plainBody: string, options: SendOptions = {}): Promise<ChatWireMessage> {
   try {
     const wire = await buildWire(roomId, plainBody, options);
-    await webrtcManager.send(roomId, wire);
+    try {
+      await webrtcManager.send(roomId, wire);
+    } catch (sendError) {
+      // Немає з’єднання — кладемо в чергу, повідомлення НЕ губиться.
+      console.warn('P2P send failed, queued to outbox:', sendError);
+      useVortexStore.getState().enqueueOutbox(roomId, wire);
+    }
+    // Якщо в кімнаті 0 пірів — теж кладемо копію в чергу (дійде при join).
+    try {
+      if (webrtcManager.peerCount(roomId) === 0) useVortexStore.getState().enqueueOutbox(roomId, wire);
+    } catch { /* ignore */ }
     const store = useVortexStore.getState();
     const parsed = parsePlainPayload(JSON.stringify({ body: plainBody, media: options.media ?? null }));
     const message = {

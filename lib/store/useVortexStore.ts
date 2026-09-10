@@ -12,6 +12,13 @@ import { decryptText, deriveRoomKey } from '@/lib/crypto/encryption';
 export interface ChatPeer { peerId: string; connectedAt: number; }
 export interface MessageMedia { name: string; mime: string; size: number; dataUri: string; durationMs?: number; }
 export interface ReactionEntry { emoji: string; peers: string[]; }
+export interface QueuedWire {
+  roomId: string;
+  wire: ChatWireMessage;
+  attempts: number;
+  nextRetryAt: number;
+}
+
 export interface VortexMessage {
   id: string;
   roomId: string;
@@ -184,6 +191,8 @@ interface VortexState {
   peerProfiles: Record<string, PeerProfilePayload>;
   pinnedMessages: Record<string, string | null>;
   unread: Record<string, number>;
+  /** P0: черга невідправлених wire-повідомлень (офлайн-пір). Не персиститься. */
+  outbox: QueuedWire[];
   callHistory: CallEntry[];
   groups: GroupChat[];
   bots: BotInfo[];
@@ -210,6 +219,10 @@ interface VortexState {
   markAllViewed: (roomId: string) => void;
   markViewed: (roomId: string, messageId: string) => void;
   markRoomOpened: (roomId: string) => void;
+  enqueueOutbox: (roomId: string, wire: ChatWireMessage) => void;
+  dequeueOutbox: (roomId: string, messageId: string) => void;
+  dueOutbox: (roomId: string, now: number) => QueuedWire[];
+  touchOutboxRetry: (roomId: string, messageId: string, nextRetryAt: number) => void;
   receiveWireMessage: (roomId: string, wire: ChatWireMessage) => Promise<void>;
   hydrateRoom: (roomId: string) => Promise<void>;
   setPeers: (roomId: string, peers: ChatPeer[]) => void;
@@ -269,6 +282,7 @@ export const useVortexStore = create<VortexState>()(
       peerProfiles: {},
       pinnedMessages: {},
       unread: {},
+      outbox: [],
       callHistory: [],
       groups: [],
       bots: [],
@@ -399,6 +413,19 @@ export const useVortexStore = create<VortexState>()(
         if (target) target.viewed = true;
       }),
       markRoomOpened: (roomId) => set((state) => { state.unread[roomId] = 0; }),
+      enqueueOutbox: (roomId, wire) => set((state) => {
+        if (!state.outbox.some((item) => item.roomId === roomId && item.wire.id === wire.id)) {
+          state.outbox.push({ roomId, wire, attempts: 0, nextRetryAt: Date.now() + 3000 });
+        }
+      }),
+      dequeueOutbox: (roomId, messageId) => set((state) => {
+        state.outbox = state.outbox.filter((item) => !(item.roomId === roomId && item.wire.id === messageId));
+      }),
+      dueOutbox: (roomId, now) => get().outbox.filter((item) => item.roomId === roomId && item.nextRetryAt <= now),
+      touchOutboxRetry: (roomId, messageId, nextRetryAt) => set((state) => {
+        const item = state.outbox.find((entry) => entry.roomId === roomId && entry.wire.id === messageId);
+        if (item) { item.attempts += 1; item.nextRetryAt = nextRetryAt; }
+      }),
       receiveWireMessage: async (roomId, wire) => {
         try {
           const did = get().currentDid;
