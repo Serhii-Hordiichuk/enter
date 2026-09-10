@@ -162,7 +162,7 @@ export function ProfileSettings({ onBack }: { onBack: () => void }): React.JSX.E
         <div className="flex flex-col gap-1 px-4 pb-6">
           <SettingsRow icon={<UserIcon size={18} />} label="Personal Info" subtitle="Name, username, bio" onClick={() => setSection('personal')} />
           <SettingsRow icon={<LockIcon size={18} />} label="Privacy & Security" subtitle="Last seen, photo, calls" onClick={() => setSection('privacy')} />
-          <SettingsRow icon={<ShieldIcon size={18} />} label="Active Sessions" subtitle={profile.activeSessions.length + ' devices'} onClick={() => setSection('sessions')} />
+          <SettingsRow icon={<ShieldIcon size={18} />} label="Active Sessions" subtitle={(profile.activeSessions ? profile.activeSessions.length : 0) + ' devices'} onClick={() => setSection('sessions')} />
           <SettingsRow icon={<KeyIcon size={18} />} label="Two-Step Verification" subtitle={profile.twoFactorEnabled ? 'Enabled' : 'Disabled'} onClick={() => setSection('2fa')} />
           <SettingsRow icon={<ExportIcon size={18} />} label="Data & Storage" subtitle="Export, cache" onClick={() => setSection('data')} />
           <SettingsRow icon={<TrashIcon size={18} />} label="Delete Account" subtitle="Irreversible" onClick={() => setSection('danger')} danger />

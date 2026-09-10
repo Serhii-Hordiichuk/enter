@@ -7,13 +7,21 @@ import { useVortexStore } from '@/lib/store/useVortexStore';
 
 interface ChatListProps {
   query: string;
-  onOpenSharedMedia: (roomId: string) => void;
+  folder?: 'all' | 'personal' | 'groups' | 'bots' | 'unread';
 }
 
-export function ChatList({ query, onOpenSharedMedia }: ChatListProps): React.JSX.Element {
+export function ChatList({ query, folder = 'all' }: ChatListProps): React.JSX.Element {
   const activeRooms = useVortexStore((state) => state.activeRooms);
+  const unread = useVortexStore((state) => state.unread);
   const normalized = query.trim().toLowerCase();
-  const filtered = activeRooms.filter((room) => (room.title || room.id).toLowerCase().includes(normalized));
+  const filtered = activeRooms.filter((room) => {
+    if (room.archived) return false;
+    if (folder === 'personal' && (room.isGroup || room.isBot)) return false;
+    if (folder === 'groups' && !room.isGroup) return false;
+    if (folder === 'bots' && !room.isBot) return false;
+    if (folder === 'unread' && (unread[room.id] ?? 0) <= 0) return false;
+    return (room.title || room.id).toLowerCase().includes(normalized);
+  });
 
   if (filtered.length === 0) {
     return (
@@ -33,7 +41,7 @@ export function ChatList({ query, onOpenSharedMedia }: ChatListProps): React.JSX
     <nav className="gotoap-scroll flex-1 overflow-y-auto px-2 pb-3" aria-label="Chat list">
       <div className="flex flex-col gap-0.5">
         {filtered.map((room) => (
-          <ChatListItem key={room.id} room={room} onOpenSharedMedia={onOpenSharedMedia} />
+          <ChatListItem key={room.id} room={room} />
         ))}
       </div>
     </nav>

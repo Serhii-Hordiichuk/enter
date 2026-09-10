@@ -7,7 +7,6 @@ import { Sidebar } from '@/components/layout/Sidebar';
 import { DidWalletCreator } from '@/components/did/DidWalletCreator';
 import { LogoIcon } from '@/components/icons';
 import { useVortexStore } from '@/lib/store/useVortexStore';
-import { SharedMediaDialog } from '@/components/chat/SharedMediaDialog';
 import { ChatsIcon, GroupIcon, BotIcon, ContactsIcon, CallsIcon, SettingsIcon } from '@/components/icons';
 
 interface AppShellProps {
@@ -20,7 +19,6 @@ export function AppShell({ children }: AppShellProps): React.JSX.Element {
   const currentDid = useVortexStore((state) => state.currentDid);
   const ensureDid = useVortexStore((state) => state.ensureDid);
   const [checked, setChecked] = useState(false);
-  const [sharedMediaRoomId, setSharedMediaRoomId] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
@@ -94,21 +92,17 @@ export function AppShell({ children }: AppShellProps): React.JSX.Element {
 
   return (
     <div className="flex h-dvh w-full overflow-hidden bg-gotoap-bg">
-      {sharedMediaRoomId ? (
-        <SharedMediaDialog open={true} roomId={sharedMediaRoomId} onClose={() => setSharedMediaRoomId(null)} />
-      ) : null}
-
       {/* Desktop sidebar - shown on lg+ */}
       {!isMobile && (
         <aside className="hidden lg:flex lg:w-[380px] shrink-0 flex-col border-r border-gotoap-line bg-gotoap-panel">
-          <Sidebar onOpenSharedMedia={(id) => setSharedMediaRoomId(id)} />
+          <Sidebar />
         </aside>
       )}
 
       {/* Mobile home content - sidebar only on home page */}
       {isMobile && isHomePage && (
         <aside className="lg:hidden w-full shrink-0 flex-col border-r border-gotoap-line bg-gotoap-panel">
-          <Sidebar onOpenSharedMedia={(id) => setSharedMediaRoomId(id)} />
+          <Sidebar />
         </aside>
       )}
 
@@ -145,10 +139,6 @@ export function AppShell({ children }: AppShellProps): React.JSX.Element {
         </nav>
       )}
 
-      {/* Desktop bottom padding for main content */}
-      {!isMobile && (
-        <div className="absolute bottom-0 left-0 right-0 h-14" />
-      )}
     </div>
   );
 }
