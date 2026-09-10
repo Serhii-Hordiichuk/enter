@@ -44,6 +44,7 @@ export function MessageInput(props: MessageInputProps): React.JSX.Element {
   const [recording, setRecording] = useState(false);
   const [recordSeconds, setRecordSeconds] = useState(0);
   const [sendOnEnter, setSendOnEnter] = useState(true);
+  const [hasText, setHasText] = useState(false);
 
   useEffect(() => {
     const stored = window.localStorage.getItem('gotoap.sendOnEnter');
@@ -66,6 +67,7 @@ export function MessageInput(props: MessageInputProps): React.JSX.Element {
 
   const notifyTyping = (): void => {
     autoGrow();
+    setHasText(Boolean(textareaRef.current && textareaRef.current.value.trim()));
     onTyping();
   };
 
@@ -82,6 +84,7 @@ export function MessageInput(props: MessageInputProps): React.JSX.Element {
     if (!body) return;
     onSendText(body, replyTo?.id ?? null);
     area.value = '';
+    setHasText(false);
     autoGrow();
   };
 
@@ -154,35 +157,13 @@ export function MessageInput(props: MessageInputProps): React.JSX.Element {
     return () => window.clearInterval(timer);
   }, [recording]);
 
-  const micButtonLabel = 'Record a voice note';
-
-  if (recording) {
-    return (
-      <div className="flex items-center gap-3 border-t border-gotoap-line bg-gotoap-panel px-3 py-2.5">
-        <button type="button" onClick={() => stopRecording(true)} aria-label="Discard the recording" className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-red-400 transition hover:bg-gotoap-hover">
-          <TrashIcon size={19} />
-        </button>
-        <span className="flex flex-1 items-center gap-2 text-sm text-gotoap-ink">
-          <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-red-500" aria-hidden="true" />
-          Recording... {String(Math.floor(recordSeconds / 60)).padStart(2, '0')}:{String(recordSeconds % 60).padStart(2, '0')}
-        </span>
-        <button type="button" onClick={() => stopRecording(false)} aria-label="Send the voice note" className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-gotoap-accent text-white transition hover:bg-gotoap-accent-hover">
-          <SendIcon size={19} />
-        </button>
-      </div>
-    );
-  }
-
   return (
-    <div className="border-t border-gotoap-line bg-gotoap-panel px-2.5 py-2 sm:px-4">
-      {replyTo && !editing ? (
+    <div className="shrink-0 border-t border-gotoap-line bg-gotoap-panel px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 sm:px-3">
+      {replyTo ? (
         <div className="mx-auto mb-1.5 flex max-w-3xl items-center gap-2 rounded-xl bg-gotoap-hover/70 px-3 py-1.5">
           <ReplyIcon size={14} className="shrink-0 text-gotoap-accent" />
-          <div className="min-w-0 flex-1">
-            <span className="block text-[11px] font-semibold text-gotoap-accent">Reply</span>
-            <span className="block truncate text-[13px] text-gotoap-ink-muted">{(replyTo.body || 'Attachment').slice(0, 80)}</span>
-          </div>
-          <button type="button" onClick={onCancelReply} aria-label="Cancel the reply" className="rounded-full p-1 text-gotoap-ink-muted hover:bg-gotoap-hover hover:text-gotoap-ink">
+          <span className="min-w-0 flex-1 truncate text-[13px] text-gotoap-ink-muted">{replyTo.body || replyTo.kind}</span>
+          <button type="button" onClick={onCancelReply} aria-label="Cancel reply" className="rounded-full p-1 text-gotoap-ink-muted hover:bg-gotoap-hover hover:text-gotoap-ink">
             <CloseIcon size={14} />
           </button>
         </div>
@@ -190,9 +171,19 @@ export function MessageInput(props: MessageInputProps): React.JSX.Element {
       {editing ? (
         <div className="mx-auto mb-1.5 flex max-w-3xl items-center gap-2 rounded-xl bg-gotoap-hover/70 px-3 py-1.5">
           <EditIcon size={14} className="shrink-0 text-gotoap-accent" />
-          <span className="min-w-0 flex-1 truncate text-[13px] text-gotoap-ink-muted">Editing message</span>
+          <span className="min-w-0 flex-1 truncate text-[13px] text-gotoap-ink-muted">Редагування повідомлення</span>
           <button type="button" onClick={onCancelEdit} aria-label="Cancel editing" className="rounded-full p-1 text-gotoap-ink-muted hover:bg-gotoap-hover hover:text-gotoap-ink">
             <CloseIcon size={14} />
+          </button>
+        </div>
+      ) : null}
+      {recording ? (
+        <div className="mx-auto mb-1.5 flex max-w-3xl items-center gap-2 rounded-xl bg-gotoap-hover/70 px-3 py-1.5 text-[13px] text-gotoap-ink">
+          <span className="h-2 w-2 animate-pulse rounded-full bg-red-500" />
+          Запис {recordSeconds}с — відпусти для відправки
+          <span className="flex-1" />
+          <button type="button" onClick={() => stopRecording(true)} aria-label="Скасувати запис" className="rounded-full p-1 text-gotoap-ink-muted hover:bg-gotoap-hover hover:text-gotoap-ink">
+            <TrashIcon size={14} />
           </button>
         </div>
       ) : null}
@@ -208,15 +199,15 @@ export function MessageInput(props: MessageInputProps): React.JSX.Element {
         <textarea
           ref={textareaRef}
           rows={1}
-          placeholder="Message"
-          aria-label="Message text"
+          placeholder="Повідомлення"
+          aria-label="Текст повідомлення"
           onChange={notifyTyping}
           onKeyDown={handleKeyDown}
-          className="gotoap-textarea max-h-[140px] flex-1 rounded-2xl bg-gotoap-panel px-3 py-2.5 text-[15px] text-gotoap-ink placeholder:text-gotoap-ink-muted focus:outline-none"
+          className="gotoap-textarea max-h-[140px] min-h-[40px] flex-1 rounded-2xl bg-gotoap-hover px-3 py-2.5 text-[15px] text-gotoap-ink placeholder:text-gotoap-ink-muted focus:outline-none"
         />
         <StickerPicker onPick={onSendSticker} />
         <div className="relative">
-          <button type="button" onClick={() => setAttachOpen((value) => !value)} aria-label="Attach a file" aria-expanded={attachOpen} className="inline-flex h-10 w-10 items-center justify-center rounded-full text-gotoap-ink-muted transition hover:bg-gotoap-hover hover:text-gotoap-ink">
+          <button type="button" onClick={() => setAttachOpen((value) => !value)} aria-label="Прикріпити файл" aria-expanded={attachOpen} className="inline-flex h-10 w-10 items-center justify-center rounded-full text-gotoap-ink-muted transition hover:bg-gotoap-hover hover:text-gotoap-ink">
             <ClipIcon size={20} />
           </button>
           <Menu
@@ -224,34 +215,19 @@ export function MessageInput(props: MessageInputProps): React.JSX.Element {
             align="right"
             onClose={() => setAttachOpen(false)}
             items={[
-              { label: 'Photo or video', icon: <ImageIcon size={16} />, onSelect: () => pickFile('image') },
-              { label: 'Document', icon: <FileIcon size={16} />, onSelect: () => pickFile('any') },
+              { label: 'Фото або відео', icon: <ImageIcon size={16} />, onSelect: () => pickFile('image') },
+              { label: 'Документ', icon: <FileIcon size={16} />, onSelect: () => pickFile('any') },
             ]}
           />
         </div>
         <button
           type="button"
           onClick={() => { const area = textareaRef.current; if (area && area.value.trim()) submitText(); else void startRecording(); }}
-          aria-label={textareaRef.current && textareaRef.current.value.trim() ? 'Send the message' : micButtonLabel}
+          aria-label={hasText ? 'Надіслати повідомлення' : 'Голосове повідомлення'}
           className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gotoap-accent text-white transition hover:bg-gotoap-accent-hover"
         >
-          {textareaRef.current && textareaRef.current.value.trim() ? <SendIcon size={19} /> : <MicIcon size={19} />}
+          {hasText ? <SendIcon size={19} /> : <MicIcon size={19} />}
         </button>
-      </div>
-      <div className="mx-auto mt-1 flex max-w-3xl items-center justify-between px-1 text-[11px] text-gotoap-ink-faint">
-        <label className="flex cursor-pointer select-none items-center gap-1.5">
-          <input
-            type="checkbox"
-            checked={sendOnEnter}
-            onChange={(event) => {
-              setSendOnEnter(event.target.checked);
-              window.localStorage.setItem('gotoap.sendOnEnter', event.target.checked ? '1' : '0');
-            }}
-            className="h-3 w-3 accent-gotoap-accent"
-          />
-          Enter to send (Shift+Enter for a new line)
-        </label>
-        <span>Max 512 KB per attachment</span>
       </div>
       <input ref={fileInputRef} type="file" onChange={(event) => void handleFile(event)} className="hidden" aria-hidden="true" />
       <input ref={imageInputRef} type="file" accept="image/*,video/*" onChange={(event) => void handleFile(event)} className="hidden" aria-hidden="true" />

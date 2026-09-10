@@ -59,8 +59,15 @@ export function Sidebar(): React.JSX.Element {
     const handleClickOutside = (event: MouseEvent) => {
       if (sidebarRef.current && !sidebarRef.current.contains(event.target as Node)) setDrawerOpen(false);
     };
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setDrawerOpen(false);
+    };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
   }, [drawerOpen]);
 
   const openSaved = (): void => {
@@ -83,7 +90,7 @@ export function Sidebar(): React.JSX.Element {
   return (
     <div ref={sidebarRef} className="relative flex h-full min-h-0 bg-gotoap-panel">
       {/* Вузька іконкова колонка як у Telegram Desktop: гамбургер + папки */}
-      <div className="hidden w-[72px] shrink-0 flex-col items-center gap-1 border-r border-gotoap-line py-2 md:flex">
+      <div className="hidden w-[72px] shrink-0 flex-col items-center gap-1 border-r border-gotoap-line py-2 lg:flex">
         <button type="button" onClick={() => setDrawerOpen((open) => !open)} aria-label="Меню" aria-expanded={drawerOpen} className="inline-flex h-10 w-10 items-center justify-center rounded-full text-gotoap-ink-muted transition hover:bg-gotoap-hover hover:text-gotoap-ink">
           <MenuIcon size={20} />
         </button>
@@ -111,8 +118,8 @@ export function Sidebar(): React.JSX.Element {
 
       {/* Колонка чатів: пошук + список */}
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <header className="flex shrink-0 items-center gap-2 px-3 pb-2 pt-3">
-          <button type="button" onClick={() => setDrawerOpen((open) => !open)} aria-label="Меню" aria-expanded={drawerOpen} className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gotoap-ink-muted transition hover:bg-gotoap-hover hover:text-gotoap-ink md:hidden">
+        <header className="flex shrink-0 items-center gap-2 px-3 pb-2 pt-[max(0.75rem,env(safe-area-inset-top))]">
+          <button type="button" onClick={() => setDrawerOpen((open) => !open)} aria-label="Меню" aria-expanded={drawerOpen} className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gotoap-ink-muted transition hover:bg-gotoap-hover hover:text-gotoap-ink lg:hidden">
             <MenuIcon size={20} />
           </button>
           <div className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-lg bg-gotoap-hover px-3 text-sm">
@@ -120,7 +127,7 @@ export function Sidebar(): React.JSX.Element {
             <input value={query} onChange={(event) => setQuery(event.target.value)} onFocus={() => setSearchOpen(true)} placeholder="Пошук" aria-label="Пошук" className="min-w-0 flex-1 bg-transparent text-gotoap-ink placeholder:text-gotoap-ink-muted focus:outline-none" />
           </div>
         </header>
-        <div className="flex shrink-0 gap-1 overflow-x-auto px-3 pb-2 md:hidden" role="tablist" aria-label="Папки чатів">
+        <div className="flex shrink-0 gap-1 overflow-x-auto px-3 pb-2 lg:hidden" role="tablist" aria-label="Папки чатів">
           {FOLDERS.map((item) => {
             const active = folder === item.id;
             return (

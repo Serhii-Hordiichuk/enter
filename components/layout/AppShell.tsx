@@ -1,13 +1,12 @@
 'use client';
 
-/** Responsive messenger shell: sidebar + content pane + mobile bottom nav, Telegram-like. */
+/** Responsive messenger shell: sidebar + content pane, як у Telegram (без нижнього меню). */
 import { useEffect, useState } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { DidWalletCreator } from '@/components/did/DidWalletCreator';
 import { LogoIcon } from '@/components/icons';
 import { useVortexStore } from '@/lib/store/useVortexStore';
-import { ChatsIcon, GroupIcon, BotIcon, ContactsIcon, CallsIcon, SettingsIcon } from '@/components/icons';
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -15,11 +14,9 @@ interface AppShellProps {
 
 export function AppShell({ children }: AppShellProps): React.JSX.Element {
   const pathname = usePathname();
-  const router = useRouter();
   const currentDid = useVortexStore((state) => state.currentDid);
   const ensureDid = useVortexStore((state) => state.ensureDid);
   const [checked, setChecked] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -39,13 +36,6 @@ export function AppShell({ children }: AppShellProps): React.JSX.Element {
       isMounted = false;
     };
   }, [ensureDid]);
-
-  useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 768);
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
 
   if (!checked) {
     return (
@@ -72,73 +62,19 @@ export function AppShell({ children }: AppShellProps): React.JSX.Element {
     );
   }
 
-  // Mobile bottom nav tabs - all 6 sections
-  const bottomTabs = [
-    { id: 'chats', label: 'Chats', icon: <ChatsIcon size={20} />, href: '/' },
-    { id: 'groups', label: 'Groups', icon: <GroupIcon size={20} />, href: '/groups' },
-    { id: 'bots', label: 'Bots', icon: <BotIcon size={20} />, href: '/bots' },
-    { id: 'contacts', label: 'Contacts', icon: <ContactsIcon size={20} />, href: '/contacts' },
-    { id: 'calls', label: 'Calls', icon: <CallsIcon size={20} />, href: '/calls' },
-    { id: 'settings', label: 'Settings', icon: <SettingsIcon size={20} />, href: '/settings' },
-  ] as const;
-
-  const handleBottomTabClick = (href: string): void => {
-    if (pathname === href) return;
-    router.push(href);
-  };
-
-  // Determine if we should show the full-page mobile content (when not on home page)
+  // На мобільному: список чатів лише на головній, всередині чату — тільки чат (як у Telegram).
   const isHomePage = pathname === '/';
 
   return (
     <div className="flex h-dvh w-full overflow-hidden bg-gotoap-bg">
-      {/* Desktop sidebar - shown on lg+ */}
-      {!isMobile && (
-        <aside className="hidden lg:flex lg:w-[380px] shrink-0 flex-col border-r border-gotoap-line bg-gotoap-panel">
-          <Sidebar />
-        </aside>
-      )}
+      {/* Сайдбар: десктоп завжди, мобільний лише на головній */}
+      <aside className={isHomePage ? 'flex w-full shrink-0 flex-col border-r border-gotoap-line bg-gotoap-panel lg:w-[380px]' : 'hidden shrink-0 flex-col border-r border-gotoap-line bg-gotoap-panel lg:flex lg:w-[380px]'}>
+        <Sidebar />
+      </aside>
 
-      {/* Mobile home content - sidebar only on home page */}
-      {isMobile && isHomePage && (
-        <aside className="lg:hidden w-full shrink-0 flex-col border-r border-gotoap-line bg-gotoap-panel">
-          <Sidebar />
-        </aside>
-      )}
-
-      <main className="flex min-w-0 flex-1 flex-col">
+      <main className={isHomePage ? 'hidden min-w-0 flex-1 flex-col lg:flex' : 'flex min-w-0 flex-1 flex-col'}>
         {children}
       </main>
-
-      {/* Mobile bottom navigation - shown on all mobile pages with proper padding */}
-      {isMobile && (
-        <nav
-          className="fixed bottom-0 left-0 right-0 z-50 flex h-14 items-center justify-around border-t border-gotoap-line bg-gotoap-panel px-2 safe-area-inset-bottom"
-          aria-label="Main navigation"
-          role="tablist"
-        >
-          {bottomTabs.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              role="tab"
-              aria-selected={pathname === tab.href}
-              onClick={() => handleBottomTabClick(tab.href)}
-              className={`
-                flex flex-col items-center gap-0.5 rounded-lg px-2 py-1 text-[11px] font-medium transition-colors
-                ${pathname === tab.href
-                  ? 'text-gotoap-accent'
-                  : 'text-gotoap-ink-muted'
-                }
-              `}
-            >
-              <span>{tab.icon}</span>
-              <span>{tab.label}</span>
-            </button>
-          ))}
-        </nav>
-      )}
-
     </div>
   );
 }
