@@ -77,7 +77,7 @@ export default function ChatPage(): React.JSX.Element {
         await webrtcManager.join(roomId);
         if (disposed) return;
         const me = getStoredDIDKeyPair();
-        if (me) await broadcastProfile(roomId, { did: me.did, displayName: profile.displayName || undefined, bio: profile.bio || undefined, colorId: profile.avatarColor });
+        if (me) await broadcastProfile(roomId, { did: me.did, displayName: profile.displayName || undefined, username: profile.username || undefined, bio: profile.bio || undefined, colorId: profile.avatarColor });
       } catch (error) {
         console.error('Failed to join the P2P room', error);
       }
@@ -92,6 +92,12 @@ export default function ChatPage(): React.JSX.Element {
       setPeers(roomId, peers);
       if (event.type === 'join' && peers.length > 0) {
         void sendReadReceipts(roomId, peers.map((peer) => peer.peerId));
+        // FIX-10: пір зайшов пізніше — відразу шлемо йому свій профіль,
+        // інакше він бачить лише DID без імені, а пошук його не знаходить.
+        try {
+          const me = useVortexStore.getState().profile;
+          void broadcastProfile(roomId, { did: myDid, displayName: me.displayName || undefined, username: me.username || undefined, bio: me.bio || undefined, colorId: me.avatarColor });
+        } catch { /* ignore */ }
       }
     });
     const offMessage = webrtcManager.onMessage(roomId, async (payload, peerId) => {

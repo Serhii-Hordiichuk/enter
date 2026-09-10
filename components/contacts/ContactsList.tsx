@@ -10,6 +10,7 @@ import { useVortexStore } from '@/lib/store/useVortexStore';
 interface ContactEntry {
   did: string;
   displayName?: string;
+  username?: string;
   bio?: string;
   lastMessageAt: number;
   online: boolean;
@@ -39,6 +40,7 @@ export function ContactsList(): React.JSX.Element {
       const entry = map.get(room.peerDid) ?? {
         did: room.peerDid,
         displayName: profile?.displayName,
+        username: profile?.username,
         bio: profile?.bio,
         lastMessageAt: room.lastMessageAt,
         online: false,
@@ -46,6 +48,7 @@ export function ContactsList(): React.JSX.Element {
       entry.online = entry.online || roomPeers.some((p) => p.peerId === room.peerDid);
       entry.lastMessageAt = Math.max(entry.lastMessageAt, room.lastMessageAt);
       if (profile?.displayName) entry.displayName = profile.displayName;
+      if (profile?.username) entry.username = profile.username;
       if (profile?.bio) entry.bio = profile.bio;
       map.set(room.peerDid, entry);
     }
@@ -81,7 +84,7 @@ export function ContactsList(): React.JSX.Element {
             <Avatar seed={contact.did} name={contact.displayName} size={48} online={contact.online} />
             <div className="min-w-0 flex-1">
               <p className="truncate text-[15px] font-medium text-gotoap-ink">{contact.displayName || contact.did.slice(0, 18) + '...'}</p>
-              <p className="truncate text-xs text-gotoap-ink-muted">{contact.online ? 'online' : contact.bio || 'last seen ' + formatLastSeen(contact.lastMessageAt)}</p>
+              <p className="truncate text-xs text-gotoap-ink-muted">{contact.username ? '@' + contact.username + ' · ' : ''}{contact.online ? 'online' : contact.bio || 'last seen ' + formatLastSeen(contact.lastMessageAt)}</p>
             </div>
             <ChevronRightIcon size={16} className="shrink-0 text-gotoap-ink-faint" />
           </button>

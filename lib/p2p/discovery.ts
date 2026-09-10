@@ -6,6 +6,7 @@
  * No server and no database are involved — only WebRTC data channels.
  */
 import type { MessageAction } from '@trystero-p2p/core';
+import { getStoredDIDKeyPair } from '@/lib/did/keyGenerator';
 import { getAppId } from './trysteroSetup';
 
 export type DirectoryEntryKind = 'user' | 'group' | 'bot';
@@ -112,6 +113,19 @@ class DirectoryService {
     await this.announce(entry);
   }
 
+  /**
+   * FIX-1 (3 пристрої не бачать одне одного): heartbeat-анонс. Раніше анонс ішов
+   * лише 1 раз при відкритті пошуку, тож пізно приєднаний пристрій нікого не бачив.
+   */
+  async startHeartbeat(): Promise<void> {
+    try {
+      const entry = this.localEntry();
+      if (entry) await this.announce(entry);
+    } catch (error) {
+      console.error('Directory heartbeat error:', error);
+    }
+  }
+
   /** Searches the P2P network by name/username/DID. Streams live results and merges the cache. */
   async searchNetwork(query: string, onResults: (entries: DirectoryEntry[]) => void): Promise<void> {
     const q = query.trim().toLowerCase();
@@ -179,12 +193,15 @@ class DirectoryService {
     }
   }
 
+  private pruneSeen(): void {
+    if (this.seen.size <= 500) return;
+    const first = this.seen.values().next();
+    if (!first.done) this.seen.delete(first.value);
+  }
+
   private myDid(): string | null {
     try {
-      const raw = window.localStorage.getItem('gotoap-did');
-      if (!raw) return null;
-      const parsed = JSON.parse(raw) as { did?: string };
-      return typeof parsed.did === 'string' ? parsed.did : null;
+      return getStoredDIDKeyPair()?.did ?? null;
     } catch {
       return null;
     }
@@ -206,6 +223,7 @@ class DirectoryService {
     const seenKey = 'ping:' + ping.requestId;
     if (this.seen.has(seenKey)) return;
     this.seen.add(seenKey);
+    this.pruneSeen();
     if (ping.requesterDid === this.myDid()) return;
     const handle = this.handle;
     if (!handle) return;
@@ -228,15 +246,15 @@ class DirectoryService {
     const seenKey = 'pong:' + pong.requestId + ':' + pong.responderDid;
     if (this.seen.has(seenKey)) return;
     this.seen.add(seenKey);
+    this.pruneSeen();
     search.onResults(pong.entries);
   }
 
   private localEntry(): DirectoryEntry | null {
     try {
-      const rawDid = window.localStorage.getItem('gotoap-did');
-      if (!rawDid) return null;
-      const parsedDid = JSON.parse(rawDid) as { did?: string };
-      if (typeof parsedDid.did !== 'string') return null;
+      const keypair = getStoredDIDKeyPair();
+      if (!keypair) return null;
+      const parsedDid = { did: keypair.did };
       const rawStore = window.localStorage.getItem('gotoap-vortex');
       let profile: { displayName?: string; username?: string; bio?: string; avatarColor?: string } | null = null;
       if (rawStore) {

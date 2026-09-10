@@ -17,12 +17,19 @@ export class WebrtcManager {
     try {
       const existing = this.handles.get(roomId);
       if (existing) return existing;
+      // FIX-6: onMessage — це setter з перезаписом. При повторному join() кімнати
+      // (чат + discovery + дзвінок одночасно) старий хендлер втрачався і повідомлення
+      // губились. Тепер диспетчер ставиться один раз і розсилає всім підписникам.
       const handle = await createRoom(roomId);
-      handle.messageAction.onMessage = (data, context) => {
+      const dispatch = (data: ChatWireMessage, context: { peerId: string }): void => {
         for (const handler of this.messageHandlers.get(roomId) ?? []) {
           try { handler(data, context.peerId); } catch (error) { console.error('P2P message handler error:', error); }
         }
       };
+      try {
+        (handle.messageAction as unknown as { on: (event: string, cb: typeof dispatch) => void }).on?.('message', dispatch);
+      } catch { /* ignore */ }
+      handle.messageAction.onMessage = dispatch;
       handle.room.onPeerJoin = (peerId) => this.emitPeer(roomId, { type: 'join', peerId });
       handle.room.onPeerLeave = (peerId) => this.emitPeer(roomId, { type: 'leave', peerId });
       handle.room.onPeerStream = (stream, peerId) => {

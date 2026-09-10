@@ -10,6 +10,7 @@ import { ChatList } from '@/components/chats/ChatList';
 import { ProfileDialog } from '@/components/profile/ProfileDialog';
 import { ArchiveIcon, BotIcon, CallsIcon, ChatsIcon, ContactsIcon, GroupIcon, MenuIcon, SavedIcon, SearchIcon, SettingsIcon, UserIcon } from '@/components/icons';
 import { useVortexStore } from '@/lib/store/useVortexStore';
+import { directory } from '@/lib/p2p/discovery';
 import { SAVED_MESSAGES_ROOM } from '@/lib/p2p/trysteroSetup';
 
 type FolderId = 'all' | 'personal' | 'groups' | 'bots' | 'unread';
@@ -53,6 +54,14 @@ export function Sidebar(): React.JSX.Element {
       })
       .reduce((sum, room) => sum + (unreadMap[room.id] ?? 0), 0);
   };
+
+  // FIX-9: фоновий announce + heartbeat, щоб 3 пристрої бачили одне одного
+  // одразу після входу, а не лише коли хтось відкриє пошук.
+  useEffect(() => {
+    void directory.announceSelf();
+    const timer = window.setInterval(() => { void directory.startHeartbeat(); }, 25000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     if (!drawerOpen) return;

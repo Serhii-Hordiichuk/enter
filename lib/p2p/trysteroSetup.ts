@@ -10,6 +10,7 @@ export type MessageKind = 'text' | 'sticker' | 'voice' | 'file' | 'reaction';
 export type PeerProfilePayload = {
   did: string;
   displayName?: string;
+  username?: string;
   bio?: string;
   colorId?: string;
 };

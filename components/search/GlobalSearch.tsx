@@ -40,11 +40,22 @@ export function GlobalSearch({ onClose }: { onClose: () => void }): React.JSX.El
   const messages = useVortexStore((state) => state.messages);
   const startRoom = useVortexStore((state) => state.startRoom);
 
+  // FIX-7: анонс профілю в мережу + heartbeat кожні 20с, поки відкритий пошук.
+  // Інакше 3 пристрої, увімкнені в різний час, ніколи не бачать одне одного.
   useEffect(() => {
     if (announced) return;
     setAnnounced(true);
     void directory.announceSelf();
+    void directory.startHeartbeat();
+    const timer = window.setInterval(() => { void directory.startHeartbeat(); }, 20000);
+    return () => window.clearInterval(timer);
   }, [announced]);
+
+  // FIX-8: якщо юзер змінив @нік/ім’я — переанонсити одразу, а не чекати 60с.
+  useEffect(() => {
+    if (!announced) return;
+    void directory.startHeartbeat();
+  }, [announced, profile.username, profile.displayName, profile.bio]);
 
   useEffect(() => {
     const q = query.trim();
